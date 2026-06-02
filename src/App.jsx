@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import Admin from './Admin.jsx'
 
 // ============ CONFIG (update with real values) ============
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://PLACEHOLDER.supabase.co'
@@ -93,7 +94,10 @@ export default function App() {
 
   useEffect(() => { loadData() }, [])
   useEffect(() => { const t = setInterval(() => setHeroIdx(i => (i + 1) % Math.max(heroProducts.length, 1)), 5000); return () => clearInterval(t) }, [products])
-  useEffect(() => { const h = window.location.hash.slice(1) || '/'; const map = { '/': 'home', '/shop': 'shop', '/cart': 'cart', '/checkout': 'checkout', '/track': 'track' }; setPage(map[h] || 'home') }, [])
+  useEffect(() => { const h = window.location.hash.slice(1) || '/'; const map = { '/': 'home', '/shop': 'shop', '/cart': 'cart', '/checkout': 'checkout', '/track': 'track', '/admin': 'admin' }; setPage(map[h] || 'home') }, [])
+
+  // Admin panel
+  if (page === 'admin' || window.location.hash === '#/admin') return <Admin />
 
   async function loadData() {
     const [{ data: p }, { data: pr }] = await Promise.all([
