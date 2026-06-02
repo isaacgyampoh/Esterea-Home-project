@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Playfair Display", Georgia, serif;
+  --font-body: "DM Sans", system-ui, sans-serif;
+}
+
+* { -webkit-tap-highlight-color: transparent; }
+body { font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fadeIn 0.3s ease; }
+.press:active { transform: scale(0.98); }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card-lift { transition: transform 0.35s ease, box-shadow 0.35s ease; }
+.card-lift:hover { transform: translateY(-3px); box-shadow: 0 8px 24px -6px rgba(0,0,0,0.08); }
