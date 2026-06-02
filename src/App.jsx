@@ -10,10 +10,10 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON)
 
 const SHOP = {
   name: 'Esterea Home',
-  phone: '024 000 0000',
-  phone2: '054 000 0000',
+  phone: '054 792 7722',
+  phone2: '054 792 7722',
   address: 'Accra, Ghana',
-  wa: '233240000000',
+  wa: '233547927722',
   mapsUrl: '#',
 }
 
