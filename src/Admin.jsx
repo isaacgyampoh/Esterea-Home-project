@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
 const SUPABASE_URL = 'https://tgdtjfquwbtvfsdnvvgm.supabase.co'
@@ -228,11 +228,239 @@ function DashSkeleton() {
   )
 }
 
+// ── CLOUDINARY UPLOAD ──
+const CLOUDINARY_CLOUD = 'dls9fai0i'
+const CLOUDINARY_PRESET = 'esterea_unsigned' // unsigned upload preset
+
+async function uploadToCloudinary(file, onProgress) {
+  const fd = new FormData()
+  fd.append('file', file)
+  fd.append('upload_preset', CLOUDINARY_PRESET)
+  fd.append('folder', 'esterea')
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`)
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable && onProgress) onProgress(Math.round(e.loaded / e.total * 100))
+    }
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const data = JSON.parse(xhr.responseText)
+        resolve(data.secure_url)
+      } else {
+        const err = JSON.parse(xhr.responseText)
+        reject(new Error(err?.error?.message || 'Upload failed'))
+      }
+    }
+    xhr.onerror = () => reject(new Error('Network error'))
+    xhr.send(fd)
+  })
+}
+
+// ── IMAGE UPLOADER COMPONENT ──
+function ImageUploader({ value, onChange }) {
+  const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [error, setError] = useState('')
+  const [dragging, setDragging] = useState(false)
+  const inputRef = useRef(null)
+
+  async function handleFile(file) {
+    if (!file || !file.type.startsWith('image/')) { setError('Please select an image file'); return }
+    if (file.size > 10 * 1024 * 1024) { setError('File too large (max 10MB)'); return }
+    setError('')
+    setUploading(true)
+    setProgress(0)
+    try {
+      const url = await uploadToCloudinary(file, setProgress)
+      onChange(url)
+    } catch (e) {
+      setError(e.message || 'Upload failed. Check Cloudinary preset.')
+    }
+    setUploading(false)
+    setProgress(0)
+  }
+
+  const onDrop = e => {
+    e.preventDefault()
+    setDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) handleFile(file)
+  }
+
+  return (
+    <div>
+      <label className="block text-[11px] text-[#a89d93] mb-1.5">Product Image</label>
+
+      {/* Preview */}
+      {value && !uploading && (
+        <div className="relative w-full h-40 bg-[#f5f2ee] rounded-xl overflow-hidden mb-2 group">
+          <img src={value.replace('/upload/', '/upload/w_400,q_auto/')} alt="preview"
+            className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+            <button type="button" onClick={() => inputRef.current?.click()}
+              className="h-8 px-3 bg-white text-[#1a1a1a] rounded-lg text-[11px] font-semibold hover:bg-[#f0ede8] transition">
+              Change
+            </button>
+            <button type="button" onClick={() => onChange('')}
+              className="h-8 px-3 bg-white/10 text-white border border-white/30 rounded-lg text-[11px] font-semibold hover:bg-white/20 transition">
+              Remove
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Upload zone */}
+      {!value && (
+        <div
+          onClick={() => !uploading && inputRef.current?.click()}
+          onDragOver={e => { e.preventDefault(); setDragging(true) }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+          className={`w-full h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition ${dragging ? 'border-[#1a1a1a] bg-[#f5f2ee]' : 'border-[#d4cec6] bg-[#fafaf8] hover:border-[#1a1a1a] hover:bg-[#f5f2ee]'}`}>
+          {uploading ? (
+            <div className="text-center">
+              <div className="w-6 h-6 border-2 border-[#a89d93] border-t-[#1a1a1a] rounded-full animate-spin mx-auto mb-2" />
+              <div className="text-[11px] text-[#a89d93]">Uploading… {progress}%</div>
+              <div className="w-32 h-1 bg-[#e8e4df] rounded-full mx-auto mt-1.5 overflow-hidden">
+                <div className="h-full bg-[#1a1a1a] rounded-full transition-all" style={{ width: `${progress}%` }} />
+              </div>
+            </div>
+          ) : (
+            <>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#c8bfb4" strokeWidth="1.5" className="mb-2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <div className="text-[12px] font-medium text-[#8a7d72]">Drop image or click to upload</div>
+              <div className="text-[10px] text-[#c8bfb4] mt-0.5">JPG, PNG, WebP up to 10MB</div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Change button when image exists but not uploading */}
+      {value && !uploading && (
+        <button type="button" onClick={() => inputRef.current?.click()}
+          className="text-[11px] text-[#a89d93] hover:text-[#1a1a1a] transition mt-1">
+          ↑ Upload different image
+        </button>
+      )}
+
+      {/* URL fallback input */}
+      <div className="mt-2">
+        <input
+          value={value || ''}
+          onChange={e => onChange(e.target.value)}
+          placeholder="Or paste image URL..."
+          className="w-full h-9 px-3 bg-[#f5f3f0] border border-[#e8e4df] rounded-lg text-[12px] focus:outline-none focus:border-[#1a1a1a] transition"
+        />
+      </div>
+
+      {error && <p className="text-[11px] text-[#c8382b] mt-1">{error}</p>}
+
+      <input ref={inputRef} type="file" accept="image/*" className="hidden"
+        onChange={e => { const f = e.target.files[0]; if (f) handleFile(f); e.target.value = '' }} />
+    </div>
+  )
+}
+
+// ── STOCK ADJUST MODAL ──
+function StockModal({ product, onClose, onDone }) {
+  const [mode, setMode] = useState('set') // 'set' | 'add' | 'remove'
+  const [qty, setQty] = useState('')
+  const [note, setNote] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function apply() {
+    const n = parseInt(qty)
+    if (isNaN(n) || n < 0) return
+    setSaving(true)
+    let newQty
+    if (mode === 'set') newQty = n
+    else if (mode === 'add') newQty = (product.quantity || 0) + n
+    else newQty = Math.max(0, (product.quantity || 0) - n)
+
+    await supabase.from('products').update({ quantity: newQty }).eq('id', product.id)
+    setSaving(false)
+    onDone(newQty)
+    onClose()
+  }
+
+  const preview = () => {
+    const n = parseInt(qty) || 0
+    if (mode === 'set') return n
+    if (mode === 'add') return (product.quantity || 0) + n
+    return Math.max(0, (product.quantity || 0) - n)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl">
+        <div className="flex items-center justify-between p-5 border-b border-[#e8e4df]">
+          <div>
+            <h2 className="font-semibold text-[#1a1a1a] text-[14px]">Adjust Stock</h2>
+            <p className="text-[11px] text-[#a89d93] mt-0.5 truncate max-w-[220px]">{product.name}</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-[#a89d93] hover:bg-[#f5f3f0] transition">{Ic.x}</button>
+        </div>
+        <div className="p-5">
+          {/* Current stock */}
+          <div className="bg-[#f5f3f0] rounded-xl p-3 mb-4 flex items-center justify-between">
+            <span className="text-[12px] text-[#8a7d72]">Current stock</span>
+            <span className={`text-[15px] font-bold ${(product.quantity || 0) <= 3 ? 'text-[#c8382b]' : (product.quantity || 0) <= 10 ? 'text-[#c67d00]' : 'text-[#2d7a4f]'}`}>
+              {product.quantity || 0} units
+            </span>
+          </div>
+
+          {/* Mode selector */}
+          <div className="grid grid-cols-3 gap-1.5 mb-4 p-1 bg-[#f5f3f0] rounded-xl">
+            {[['set','Set to'],['add','Add'],['remove','Remove']].map(([v,l]) => (
+              <button key={v} onClick={() => setMode(v)}
+                className={`h-8 rounded-lg text-[11.5px] font-semibold transition ${mode===v ? 'bg-white text-[#1a1a1a] shadow-sm' : 'text-[#8a7d72]'}`}>
+                {l}
+              </button>
+            ))}
+          </div>
+
+          <div className="mb-3">
+            <label className="block text-[11px] text-[#a89d93] mb-1.5">
+              {mode === 'set' ? 'New quantity' : mode === 'add' ? 'Units to add' : 'Units to remove'}
+            </label>
+            <input type="number" min="0" value={qty} onChange={e => setQty(e.target.value)}
+              placeholder="0"
+              className="w-full h-12 px-4 bg-[#f5f3f0] border border-[#e8e4df] rounded-xl text-[16px] font-semibold focus:outline-none focus:border-[#1a1a1a] transition text-center"
+              autoFocus
+            />
+          </div>
+
+          {/* Preview */}
+          {qty !== '' && (
+            <div className="bg-[#e8f5ee] rounded-xl p-3 mb-4 flex items-center justify-between">
+              <span className="text-[12px] text-[#5a5048]">New stock will be</span>
+              <span className="text-[15px] font-bold text-[#2d7a4f]">{preview()} units</span>
+            </div>
+          )}
+
+          <input value={note} onChange={e => setNote(e.target.value)} placeholder="Reason / note (optional)"
+            className="w-full h-9 px-3 mb-4 bg-[#f5f3f0] border border-[#e8e4df] rounded-xl text-[12px] focus:outline-none focus:border-[#1a1a1a] transition" />
+
+          <button onClick={apply} disabled={!qty || saving}
+            className="w-full h-11 bg-[#1a1a1a] text-white rounded-xl text-[13px] font-semibold disabled:opacity-30 hover:bg-[#333] transition flex items-center justify-center gap-2">
+            {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+            {saving ? 'Saving...' : 'Update Stock'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── PRODUCTS ──
 function Products() {
   const [products, setProducts] = useState([])
   const [editing, setEditing] = useState(null)
+  const [stockModal, setStockModal] = useState(null)
   const [search, setSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState('all') // all | active | hidden | low
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -260,7 +488,7 @@ function Products() {
   }
 
   async function del(id) {
-    if (!confirm('Delete this product?')) return
+    if (!confirm('Delete this product? This cannot be undone.')) return
     await supabase.from('products').delete().eq('id', id)
     load()
   }
@@ -270,74 +498,138 @@ function Products() {
     setProducts(ps => ps.map(p => p.id === id ? { ...p, visible: !v } : p))
   }
 
-  const filtered = search ? products.filter(p => p.name.toLowerCase().includes(search.toLowerCase())) : products
-
   const blankProduct = { name: '', category: '', price: 0, cost_price: 0, quantity: 0, image: '', description: '', visible: true, wholesale_price: 0, wholesale_min_qty: 0 }
+
+  const stockBadge = qty => {
+    if (qty === 0) return { label: 'Out of Stock', cls: 'bg-[#fde8e8] text-[#c8382b]' }
+    if (qty <= 3) return { label: 'Critical', cls: 'bg-[#fde8e8] text-[#c8382b]' }
+    if (qty <= 10) return { label: 'Low Stock', cls: 'bg-[#fef3e2] text-[#c67d00]' }
+    return { label: 'In Stock', cls: 'bg-[#e8f5ee] text-[#2d7a4f]' }
+  }
+
+  const filtered = products.filter(p => {
+    if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.category?.toLowerCase().includes(search.toLowerCase())) return false
+    if (filterStatus === 'active' && !p.visible) return false
+    if (filterStatus === 'hidden' && p.visible) return false
+    if (filterStatus === 'low' && (p.quantity || 0) > 10) return false
+    return true
+  })
+
+  const lowCount = products.filter(p => (p.quantity || 0) <= 10).length
 
   return (
     <div>
+      {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-semibold text-[#1a1a1a]" style={{fontFamily:'var(--font-display)'}}>Products</h1>
-          <p className="text-[12px] text-[#a89d93]">{products.length} items</p>
+          <h1 className="text-xl font-semibold text-[#1a1a1a]" style={{fontFamily:'var(--font-display)'}}>Inventory</h1>
+          <p className="text-[12px] text-[#a89d93]">{products.length} products · {lowCount > 0 && <span className="text-[#c67d00]">{lowCount} low stock</span>}</p>
         </div>
         <button onClick={() => setEditing(blankProduct)}
-          className="flex items-center gap-2 h-10 px-4 bg-[#1a1a1a] text-white rounded-xl text-[12.5px] font-semibold hover:bg-[#333] transition">
+          className="flex items-center gap-2 h-10 px-4 bg-[#1a1a1a] text-white rounded-xl text-[12.5px] font-semibold hover:bg-[#333] transition press">
           {Ic.plus} Add Product
         </button>
       </div>
 
-      <div className="relative mb-4">
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products..."
-          className="w-full h-10 px-4 pl-10 bg-white border border-[#e8e4df] rounded-xl text-[13px] focus:outline-none focus:border-[#1a1a1a] transition" />
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#c8bfb4]">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        </span>
+      {/* Filters + Search */}
+      <div className="flex gap-2 mb-4 flex-wrap">
+        <div className="relative flex-1 min-w-[180px]">
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products..."
+            className="w-full h-10 px-4 pl-9 bg-white border border-[#e8e4df] rounded-xl text-[13px] focus:outline-none focus:border-[#1a1a1a] transition" />
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#c8bfb4]">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </span>
+        </div>
+        <div className="flex gap-1.5">
+          {[['all','All'],['active','Active'],['hidden','Hidden'],['low','Low Stock']].map(([v,l]) => (
+            <button key={v} onClick={() => setFilterStatus(v)}
+              className={`h-10 px-3 rounded-xl text-[11.5px] font-medium whitespace-nowrap transition ${filterStatus===v ? 'bg-[#1a1a1a] text-white' : 'bg-white border border-[#e8e4df] text-[#8a7d72] hover:border-[#1a1a1a]'}`}>
+              {l}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Edit modal */}
+      {/* Stock Adjust Modal */}
+      {stockModal && (
+        <StockModal
+          product={stockModal}
+          onClose={() => setStockModal(null)}
+          onDone={newQty => setProducts(ps => ps.map(p => p.id === stockModal.id ? { ...p, quantity: newQty } : p))}
+        />
+      )}
+
+      {/* Edit / Add Modal */}
       {editing && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between p-5 border-b border-[#e8e4df]">
-              <h2 className="font-semibold text-[#1a1a1a] text-[15px]">{editing.id ? 'Edit' : 'New'} Product</h2>
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b border-[#e8e4df] sticky top-0 bg-white z-10">
+              <h2 className="font-semibold text-[#1a1a1a] text-[15px]">{editing.id ? 'Edit Product' : 'New Product'}</h2>
               <button onClick={() => setEditing(null)} className="w-8 h-8 flex items-center justify-center rounded-lg text-[#a89d93] hover:text-[#1a1a1a] hover:bg-[#f5f3f0] transition">{Ic.x}</button>
             </div>
-            <div className="p-5 space-y-3">
-              <Field label="Product Name *" value={editing.name} onChange={v => setEditing({...editing, name:v})} placeholder="e.g. Rattan Side Table" />
-              <Field label="Category" value={editing.category} onChange={v => setEditing({...editing, category:v})} placeholder="e.g. Furniture" />
-              <Field label="Image URL (Cloudinary)" value={editing.image} onChange={v => setEditing({...editing, image:v})} placeholder="https://res.cloudinary.com/..." />
-              {editing.image && (
-                <img src={thumb(editing.image, 200)} alt="preview" className="w-24 h-24 object-cover rounded-xl border border-[#e8e4df]" onError={e => e.target.style.display='none'} />
-              )}
-              <div>
-                <label className="block text-[11px] text-[#a89d93] mb-1">Description</label>
-                <textarea value={editing.description||''} onChange={e => setEditing({...editing,description:e.target.value})} placeholder="Short product description"
-                  className="w-full h-16 px-3 py-2 bg-[#f5f3f0] border border-[#e8e4df] rounded-xl text-[13px] focus:outline-none focus:border-[#1a1a1a] transition resize-none" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <NumField label="Selling Price (GH₵)" value={editing.price} onChange={v => setEditing({...editing,price:v})} />
-                <NumField label="Cost Price (GH₵)" value={editing.cost_price} onChange={v => setEditing({...editing,cost_price:v})} />
-              </div>
-              <NumField label="Stock Quantity" value={editing.quantity} onChange={v => setEditing({...editing,quantity:v})} step="1" />
-              <div className="grid grid-cols-2 gap-3">
-                <NumField label="Wholesale Price" value={editing.wholesale_price} onChange={v => setEditing({...editing,wholesale_price:v})} />
-                <NumField label="Wholesale Min Qty" value={editing.wholesale_min_qty} onChange={v => setEditing({...editing,wholesale_min_qty:v})} step="1" />
-              </div>
-              <label className="flex items-center gap-2 text-[13px] text-[#5a5048] cursor-pointer">
-                <div onClick={() => setEditing({...editing,visible:!editing.visible})}
-                  className={`w-10 h-5.5 rounded-full flex items-center transition-colors ${editing.visible ? 'bg-[#2d7a4f]' : 'bg-[#e8e4df]'}`}
-                  style={{height:'22px'}}>
-                  <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform mx-0.5 ${editing.visible ? 'translate-x-4.5' : ''}`} style={{transform: editing.visible ? 'translateX(18px)' : 'translateX(0)'}} />
+            <div className="p-5 space-y-4">
+
+              {/* Image upload */}
+              <ImageUploader value={editing.image || ''} onChange={v => setEditing({...editing, image:v})} />
+
+              <div className="border-t border-[#f5f3f0] pt-4 space-y-3">
+                <Field label="Product Name *" value={editing.name} onChange={v => setEditing({...editing, name:v})} placeholder="e.g. Rattan Side Table" />
+                <Field label="Category" value={editing.category} onChange={v => setEditing({...editing, category:v})} placeholder="e.g. Furniture" />
+                <div>
+                  <label className="block text-[11px] text-[#a89d93] mb-1">Description</label>
+                  <textarea value={editing.description||''} onChange={e => setEditing({...editing,description:e.target.value})} placeholder="Short description shown to customers"
+                    className="w-full h-16 px-3 py-2 bg-[#f5f3f0] border border-[#e8e4df] rounded-xl text-[13px] focus:outline-none focus:border-[#1a1a1a] transition resize-none" />
                 </div>
-                Visible in store
-              </label>
+              </div>
+
+              {/* Pricing section */}
+              <div className="border border-[#e8e4df] rounded-xl p-4">
+                <div className="text-[11px] font-semibold text-[#a89d93] uppercase tracking-widest mb-3">Pricing</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <NumField label="Selling Price (GH₵) *" value={editing.price} onChange={v => setEditing({...editing,price:v})} />
+                  <NumField label="Cost Price (GH₵)" value={editing.cost_price} onChange={v => setEditing({...editing,cost_price:v})} />
+                </div>
+                {editing.price > 0 && editing.cost_price > 0 && (
+                  <div className="mt-2 text-[11px] text-[#2d7a4f]">
+                    Margin: GH₵ {(editing.price - editing.cost_price).toFixed(2)} ({((editing.price - editing.cost_price) / editing.price * 100).toFixed(0)}%)
+                  </div>
+                )}
+              </div>
+
+              {/* Stock section */}
+              <div className="border border-[#e8e4df] rounded-xl p-4">
+                <div className="text-[11px] font-semibold text-[#a89d93] uppercase tracking-widest mb-3">Stock</div>
+                <NumField label="Opening / Current Quantity" value={editing.quantity} onChange={v => setEditing({...editing,quantity:v})} step="1" />
+                <p className="text-[10.5px] text-[#c8bfb4] mt-1.5">Use the Adjust Stock button on the product row to change stock after creation.</p>
+              </div>
+
+              {/* Wholesale */}
+              <div className="border border-[#e8e4df] rounded-xl p-4">
+                <div className="text-[11px] font-semibold text-[#a89d93] uppercase tracking-widest mb-3">Wholesale (optional)</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <NumField label="Wholesale Price" value={editing.wholesale_price} onChange={v => setEditing({...editing,wholesale_price:v})} />
+                  <NumField label="Min Quantity" value={editing.wholesale_min_qty} onChange={v => setEditing({...editing,wholesale_min_qty:v})} step="1" />
+                </div>
+              </div>
+
+              {/* Visibility toggle */}
+              <div className="flex items-center justify-between p-3 bg-[#f5f3f0] rounded-xl">
+                <div>
+                  <div className="text-[13px] font-medium text-[#1a1a1a]">Show in Store</div>
+                  <div className="text-[11px] text-[#a89d93]">Customers can see and buy this product</div>
+                </div>
+                <button type="button" onClick={() => setEditing({...editing,visible:!editing.visible})}
+                  className={`w-12 h-6 rounded-full flex items-center transition-colors px-0.5 ${editing.visible ? 'bg-[#2d7a4f]' : 'bg-[#d4cec6]'}`}>
+                  <div className={`w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${editing.visible ? 'translate-x-6' : 'translate-x-0'}`} />
+                </button>
+              </div>
             </div>
-            <div className="flex gap-2 p-5 pt-0">
-              <button onClick={save} disabled={saving}
-                className="flex-1 h-11 bg-[#1a1a1a] text-white rounded-xl text-[13px] font-semibold hover:bg-[#333] transition disabled:opacity-50 flex items-center justify-center gap-2">
+
+            <div className="flex gap-2 p-5 pt-0 sticky bottom-0 bg-white border-t border-[#f5f3f0]">
+              <button onClick={save} disabled={saving || !editing.name?.trim()}
+                className="flex-1 h-11 bg-[#1a1a1a] text-white rounded-xl text-[13px] font-semibold hover:bg-[#333] transition disabled:opacity-40 flex items-center justify-center gap-2">
                 {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
-                {saving ? 'Saving...' : 'Save Product'}
+                {saving ? 'Saving...' : (editing.id ? 'Save Changes' : 'Add Product')}
               </button>
               <button onClick={() => setEditing(null)} className="flex-1 h-11 bg-[#f5f3f0] text-[#5a5048] rounded-xl text-[13px] font-semibold hover:bg-[#e8e4df] transition">
                 Cancel
@@ -347,34 +639,105 @@ function Products() {
         </div>
       )}
 
+      {/* Products table */}
       {loading ? (
         <div className="space-y-2">
-          {[...Array(5)].map((_,i) => <div key={i} className="bg-white rounded-2xl p-4 border border-[#e8e4df]"><div className="skeleton h-4 w-48 rounded mb-2" /><div className="skeleton h-3 w-32 rounded" /></div>)}
+          {[...Array(5)].map((_,i) => (
+            <div key={i} className="bg-white rounded-2xl p-4 border border-[#e8e4df] flex items-center gap-3">
+              <div className="skeleton w-12 h-12 rounded-xl shrink-0" />
+              <div className="flex-1"><div className="skeleton h-3.5 w-40 rounded mb-2" /><div className="skeleton h-2.5 w-28 rounded" /></div>
+              <div className="skeleton h-7 w-16 rounded-lg" />
+            </div>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-[#e8e4df] py-16 text-center">
+          <div className="text-3xl mb-3 text-[#e8e4df]">◇</div>
+          <p className="text-[#a89d93] text-sm">{search ? 'No products match your search.' : 'No products yet. Add your first one.'}</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-[#e8e4df] overflow-hidden">
-          {filtered.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-[#a89d93] text-sm">No products yet.</p>
-            </div>
-          ) : filtered.map((p, i) => (
-            <div key={p.id} className={`flex items-center gap-3 p-3 border-b border-[#f5f3f0] last:border-0 ${!p.visible ? 'opacity-50' : ''}`}>
-              <div className="w-11 h-11 bg-[#f5f2ee] rounded-xl overflow-hidden shrink-0">
-                {p.image ? <img src={thumb(p.image, 90)} className="w-full h-full object-cover" alt={p.name} /> : <div className="w-full h-full flex items-center justify-center text-[#c8bfb4] text-sm" style={{fontFamily:'var(--font-display)'}}>E</div>}
+          {/* Table header — desktop only */}
+          <div className="hidden md:grid grid-cols-[48px_1fr_100px_90px_90px_90px_120px] gap-3 px-4 py-2.5 border-b border-[#f5f3f0] bg-[#fafaf8]">
+            {['','Product','Category','Price','Cost','Stock',''].map((h,i) => (
+              <div key={i} className="text-[10px] font-semibold text-[#a89d93] uppercase tracking-wider">{h}</div>
+            ))}
+          </div>
+
+          {filtered.map(p => {
+            const badge = stockBadge(p.quantity || 0)
+            return (
+              <div key={p.id} className={`flex md:grid md:grid-cols-[48px_1fr_100px_90px_90px_90px_120px] items-center gap-3 px-4 py-3 border-b border-[#f5f3f0] last:border-0 hover:bg-[#fafaf8] transition ${!p.visible ? 'opacity-50' : ''}`}>
+                {/* Image */}
+                <div className="w-12 h-12 bg-[#f5f2ee] rounded-xl overflow-hidden shrink-0">
+                  {p.image
+                    ? <img src={p.image.replace('/upload/', '/upload/w_96,q_auto/')} className="w-full h-full object-cover" alt={p.name} />
+                    : <div className="w-full h-full flex items-center justify-center text-[#c8bfb4] text-xs" style={{fontFamily:'var(--font-display)'}}>E</div>
+                  }
+                </div>
+
+                {/* Name + category (mobile shows all info here) */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[13px] font-medium text-[#1a1a1a] truncate">{p.name}</span>
+                    {!p.visible && <span className="text-[9px] bg-[#f5f3f0] text-[#a89d93] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide">Hidden</span>}
+                  </div>
+                  <div className="text-[11px] text-[#a89d93] md:hidden mt-0.5">{p.category} · {money(p.price)} · Qty: {p.quantity || 0}</div>
+                  {/* Mobile stock badge */}
+                  <span className={`md:hidden inline-block text-[9px] font-semibold px-1.5 py-0.5 rounded mt-1 ${badge.cls}`}>{badge.label}</span>
+                </div>
+
+                {/* Category — desktop */}
+                <div className="hidden md:block text-[12px] text-[#8a7d72] truncate">{p.category || '—'}</div>
+
+                {/* Price */}
+                <div className="hidden md:block text-[13px] font-semibold text-[#1a1a1a]">{money(p.price)}</div>
+
+                {/* Cost */}
+                <div className="hidden md:block text-[12px] text-[#a89d93]">{p.cost_price ? money(p.cost_price) : '—'}</div>
+
+                {/* Stock */}
+                <div className="hidden md:flex items-center gap-1.5">
+                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${badge.cls}`}>{p.quantity || 0}</span>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-1 shrink-0 ml-auto md:ml-0">
+                  {/* Stock adjust */}
+                  <button onClick={() => setStockModal(p)}
+                    className="h-7 px-2 rounded-lg bg-[#f5f3f0] text-[#5a5048] hover:bg-[#e8e4df] text-[10px] font-semibold transition hidden md:flex items-center gap-1"
+                    title="Adjust stock">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                    Stock
+                  </button>
+                  {/* Visibility */}
+                  <button onClick={() => toggleVisible(p.id, p.visible)}
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center transition ${p.visible ? 'bg-[#e8f5ee] text-[#2d7a4f]' : 'bg-[#f5f3f0] text-[#c8bfb4]'}`}
+                    title={p.visible ? 'Hide from store' : 'Show in store'}>
+                    {Ic.eye}
+                  </button>
+                  {/* Edit */}
+                  <button onClick={() => setEditing(p)} className="w-7 h-7 rounded-lg bg-[#f5f3f0] text-[#5a5048] hover:bg-[#e8e4df] flex items-center justify-center transition">{Ic.edit}</button>
+                  {/* Delete */}
+                  <button onClick={() => del(p.id)} className="w-7 h-7 rounded-lg bg-[#fde8e8] text-[#c8382b] hover:bg-red-200 flex items-center justify-center transition">{Ic.trash}</button>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium text-[#1a1a1a] truncate">{p.name}</div>
-                <div className="text-[11px] text-[#a89d93]">{p.category} · Qty: {p.quantity} · {money(p.price)}</div>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <button onClick={() => toggleVisible(p.id, p.visible)}
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center transition ${p.visible ? 'bg-[#e8f5ee] text-[#2d7a4f]' : 'bg-[#f5f3f0] text-[#c8bfb4]'}`}
-                  title={p.visible ? 'Hide' : 'Show'}>
-                  {Ic.eye}
-                </button>
-                <button onClick={() => setEditing(p)} className="w-7 h-7 rounded-lg bg-[#f5f3f0] text-[#5a5048] hover:bg-[#e8e4df] flex items-center justify-center transition">{Ic.edit}</button>
-                <button onClick={() => del(p.id)} className="w-7 h-7 rounded-lg bg-[#fde8e8] text-[#c8382b] hover:bg-red-200 flex items-center justify-center transition">{Ic.trash}</button>
-              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Stock summary bar */}
+      {!loading && products.length > 0 && (
+        <div className="mt-4 grid grid-cols-3 gap-3">
+          {[
+            ['Total Products', products.length, '#5a5048'],
+            ['Low / Out of Stock', products.filter(p => (p.quantity||0) <= 10).length, '#c67d00'],
+            ['Hidden', products.filter(p => !p.visible).length, '#a89d93'],
+          ].map(([l,v,c]) => (
+            <div key={l} className="bg-white rounded-xl p-3 border border-[#e8e4df] text-center">
+              <div className="text-[10px] text-[#a89d93] mb-1">{l}</div>
+              <div className="text-[18px] font-semibold" style={{color:c}}>{v}</div>
             </div>
           ))}
         </div>
