@@ -2,759 +2,553 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import Admin from './Admin.jsx'
 
-// ============ CONFIG ============
-const SUPABASE_URL = 'https://tgdtjfquwbtvfsdnvvgm.supabase.co'
+const SUPABASE_URL  = 'https://tgdtjfquwbtvfsdnvvgm.supabase.co'
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnZHRqZnF1d2J0dmZzZG52dmdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NTM4MjUsImV4cCI6MjA5NjAyOTgyNX0.uXUkodx29_LQNU8pkpbxNnYGFgBYmoFTJHtxVWWAt8E'
-const PAYSTACK_KEY = 'pk_live_e77125e62b94f8222c402f584769d28fe505c92b'
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON)
+const PAYSTACK_KEY  = 'pk_live_e77125e62b94f8222c402f584769d28fe505c92b'
+const supabase      = createClient(SUPABASE_URL, SUPABASE_ANON)
+const WA            = '233547927722'
+const PHONE         = '0547927722'
 
-const SHOP = {
-  name: 'Esterea Home',
-  phone: '054 792 7722',
-  wa: '233547927722',
-  address: 'Accra, Ghana',
-  tagline: 'Curated home decor & furnishings',
-}
+const ghs   = n => `GH₵\u00a0${Number(n||0).toFixed(2)}`
+const img   = (url, w=600) => url ? url.replace('/upload/', `/upload/w_${w},q_auto,f_auto/`) : ''
+const fmtPh = p => p.replace(/\s+/g,'').replace(/^0/,'233')
 
-// ============ HELPERS ============
-const money = n => `GH₵ ${Number(n || 0).toFixed(2)}`
-const thumb = (url, w = 400) => url ? url.replace('/upload/', `/upload/w_${w},q_auto,f_auto/`) : ''
-const formatPhone = p => p.replace(/\s+/g, '').replace(/^0/, '233')
-
-function getPage() {
-  const h = window.location.hash.replace('#', '') || '/'
-  const map = { '/': 'home', '/shop': 'shop', '/cart': 'cart', '/checkout': 'checkout', '/track': 'track', '/admin': 'admin', '/success': 'success' }
+function page() {
+  const h = window.location.hash.replace('#','') || '/'
+  const map = {'/':'home','/shop':'shop','/cart':'cart','/checkout':'checkout','/track':'track','/admin':'admin','/success':'success'}
   return map[h] || 'home'
 }
 
-// ============ ICONS ============
-const Icons = {
-  search: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>,
-  cart: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>,
-  home: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>,
-  grid: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>,
-  track: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>,
-  arrow: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>,
-  arrowLeft: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>,
-  plus: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>,
-  minus: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14"/></svg>,
-  check: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>,
-  phone: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.11 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>,
-  wa: <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>,
-  x: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>,
-}
-
-// ============ PRODUCT CARD ============
-function Card({ p, promo, onOpen, onAdd }) {
-  const [added, setAdded] = useState(false)
-  const handleAdd = e => {
-    e.stopPropagation()
-    onAdd()
-    setAdded(true)
-    setTimeout(() => setAdded(false), 1400)
-  }
-  return (
-    <div className="group cursor-pointer card-hover" onClick={onOpen}>
-      <div className="relative aspect-[3/4] bg-[#f5f2ee] rounded-2xl overflow-hidden mb-3">
-        {p.image
-          ? <img src={thumb(p.image, 600)} alt={p.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" />
-          : <div className="w-full h-full flex items-center justify-center text-[#c8bfb4] text-4xl font-light" style={{fontFamily:'var(--font-display)'}}>E</div>
-        }
-        {promo && <span className="absolute top-3 left-3 bg-[#c8382b] text-white text-[9px] font-semibold px-2.5 py-1 rounded-full tracking-wider uppercase">Sale</span>}
-        <button
-          onClick={handleAdd}
-          className={`absolute bottom-3 right-3 w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 shadow-lg ${added ? 'bg-[#2d7a4f] text-white scale-110' : 'bg-white text-[#1a1a1a] opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0'}`}
-        >
-          {added ? Icons.check : Icons.plus}
-        </button>
-      </div>
-      <div className="px-0.5">
-        <div className="text-[10px] text-[#a89d93] uppercase tracking-widest mb-1">{p.category}</div>
-        <div className="text-[13.5px] font-medium leading-snug line-clamp-2 text-[#1a1a1a] mb-2">{p.name}</div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-[15px] font-semibold text-[#1a1a1a]">{money(promo ? promo.price : p.price)}</span>
-            {promo && <span className="text-[11px] text-[#c8bfb4] line-through">{money(p.price)}</span>}
-          </div>
-          <button onClick={handleAdd}
-            className={`text-[10px] font-semibold px-3 py-1.5 rounded-full transition-all press ${added ? 'bg-[#2d7a4f] text-white' : 'bg-[#1a1a1a] text-white hover:bg-[#333]'}`}>
-            {added ? '✓' : 'Add'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ============ SKELETON ============
-function CardSkeleton() {
-  return (
-    <div>
-      <div className="aspect-[3/4] rounded-2xl skeleton mb-3" />
-      <div className="skeleton h-2.5 w-16 rounded mb-2" />
-      <div className="skeleton h-3.5 w-full rounded mb-1" />
-      <div className="skeleton h-3.5 w-3/4 rounded mb-2.5" />
-      <div className="skeleton h-5 w-20 rounded" />
-    </div>
-  )
-}
-
-// ============ LOAD PAYSTACK ============
 function loadPaystack() {
-  return new Promise(resolve => {
-    if (window.PaystackPop) { resolve(); return }
+  return new Promise(res => {
+    if (window.PaystackPop) { res(); return }
     const s = document.createElement('script')
     s.src = 'https://js.paystack.co/v2/inline.js'
-    s.onload = resolve
+    s.onload = res
     document.head.appendChild(s)
   })
 }
 
-// ============ MAIN APP ============
-export default function App() {
-  // Routing — check hash FIRST before any state
-  const initialPage = getPage()
-  
-  // If admin, render immediately without any store loading
-  if (initialPage === 'admin') return <Admin />
-
-  return <Store initialPage={initialPage} />
+/* ─── ICONS (minimal, hand-drawn feel) ─── */
+const Ico = {
+  bag:    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>,
+  search: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>,
+  x:      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M18 6L6 18M6 6l12 12"/></svg>,
+  back:   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>,
+  plus:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>,
+  minus:  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/></svg>,
+  home:   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>,
+  grid:   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>,
+  cart:   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39A2 2 0 0 0 9.68 16h9.72a2 2 0 0 0 1.96-1.61L23 6H6"/></svg>,
+  pin:    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+  wa:     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>,
 }
 
-function Store({ initialPage }) {
-  const [page, setPage] = useState(initialPage)
+/* ─── PRODUCT CARD ─── */
+function Card({ p, promo, onOpen, onAdd }) {
+  const [done, setDone] = useState(false)
+  const add = e => { e.stopPropagation(); onAdd(); setDone(true); setTimeout(()=>setDone(false),1400) }
+  const price = promo ? promo.price : p.price
+
+  return (
+    <div className="card anim-up" onClick={onOpen}>
+      <div className="card-img" style={{ aspectRatio:'3/4', borderRadius:2 }}>
+        {p.image
+          ? <img src={img(p.image,600)} alt={p.name} loading="lazy" />
+          : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', color:'#ccc', fontSize:32, fontFamily:'var(--serif)' }}>E</div>
+        }
+        {promo && <span style={{ position:'absolute', top:10, left:10, background:'#111', color:'#fff', fontSize:9, letterSpacing:'.08em', fontWeight:500, padding:'3px 8px', textTransform:'uppercase' }}>Sale</span>}
+        <button onClick={add} style={{ position:'absolute', bottom:10, right:10, width:34, height:34, background: done ? '#111' : '#fff', color: done ? '#fff' : '#111', border:'none', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', boxShadow:'0 1px 6px rgba(0,0,0,.12)', transition:'all .2s', opacity: done ? 1 : 0 }} className="card-add-btn">
+          {done ? '✓' : Ico.plus}
+        </button>
+      </div>
+      <div style={{ marginTop:12 }}>
+        {p.category && <div style={{ fontSize:10, letterSpacing:'.1em', textTransform:'uppercase', color:'#aaa', marginBottom:4 }}>{p.category}</div>}
+        <div className="clip2" style={{ fontSize:13, color:'#222', lineHeight:1.45, marginBottom:8 }}>{p.name}</div>
+        <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between' }}>
+          <div style={{ display:'flex', alignItems:'baseline', gap:6 }}>
+            <span style={{ fontSize:14, fontWeight:500 }}>{ghs(price)}</span>
+            {promo && <span style={{ fontSize:11, color:'#bbb', textDecoration:'line-through' }}>{ghs(p.price)}</span>}
+          </div>
+          <button onClick={add} className="btn btn-dark" style={{ padding:'5px 12px', borderRadius:2, fontSize:11 }}>
+            {done ? '✓ Added' : 'Add'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ─── SKELETON ─── */
+const CardSkel = () => (
+  <div>
+    <div className="skel" style={{ aspectRatio:'3/4', borderRadius:2 }} />
+    <div className="skel" style={{ height:10, width:'60%', marginTop:12, marginBottom:6 }} />
+    <div className="skel" style={{ height:13, width:'90%', marginBottom:4 }} />
+    <div className="skel" style={{ height:13, width:'70%', marginBottom:10 }} />
+    <div className="skel" style={{ height:14, width:'40%' }} />
+  </div>
+)
+
+/* ─── ROOT ─── */
+export default function App() {
+  if (page() === 'admin') return <Admin />
+  return <Store />
+}
+
+/* ─── STORE ─── */
+function Store() {
+  const [pg, setPg]         = useState(page)
   const [products, setProducts] = useState([])
   const [promos, setPromos] = useState([])
-  const [categories, setCategories] = useState([])
+  const [cats, setCats]     = useState([])
   const [loading, setLoading] = useState(true)
-  const [cart, setCart] = useState([])
-  const [toast, setToast] = useState('')
-  const [search, setSearch] = useState('')
-  const [showSearch, setShowSearch] = useState(false)
-  const [catFilter, setCatFilter] = useState('All')
+  const [cart, setCart]     = useState([])
+  const [toast, setToast]   = useState('')
+  const [q, setQ]           = useState('')
+  const [showQ, setShowQ]   = useState(false)
+  const [cat, setCat]       = useState('All')
   const [detail, setDetail] = useState(null)
-  const [heroIdx, setHeroIdx] = useState(0)
+  const [heroI, setHeroI]   = useState(0)
 
   // Checkout
-  const [fulfillment, setFulfillment] = useState('delivery')
-  const [custName, setCustName] = useState('')
-  const [custPhone, setCustPhone] = useState('')
-  const [custAddress, setCustAddress] = useState('')
-  const [custNotes, setCustNotes] = useState('')
+  const [fulfill, setFulfill]     = useState('delivery')
+  const [name, setName]           = useState('')
+  const [phone, setPhone]         = useState('')
+  const [addr, setAddr]           = useState('')
+  const [notes, setNotes]         = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [orderResult, setOrderResult] = useState(null)
 
   // Track
-  const [trackPhone, setTrackPhone] = useState('')
-  const [trackOrders, setTrackOrders] = useState([])
+  const [tPhone, setTPhone] = useState('')
+  const [tOrders, setTOrders] = useState([])
   const [tracked, setTracked] = useState(false)
   const [tracking, setTracking] = useState(false)
 
-  useEffect(() => { loadData() }, [])
-
+  useEffect(() => { load() }, [])
   useEffect(() => {
-    const heroProducts = products.filter(p => p.image)
-    if (heroProducts.length === 0) return
-    const t = setInterval(() => setHeroIdx(i => (i + 1) % heroProducts.length), 5000)
-    return () => clearInterval(t)
+    const heroes = products.filter(p=>p.image)
+    if (!heroes.length) return
+    const t = setInterval(()=>setHeroI(i=>(i+1)%heroes.length), 5000)
+    return ()=>clearInterval(t)
   }, [products.length])
-
   useEffect(() => {
-    const onHash = () => {
-      const p = getPage()
-      if (p === 'admin') { window.location.reload(); return }
-      setPage(p)
-      window.scrollTo(0, 0)
-    }
-    window.addEventListener('hashchange', onHash)
-    return () => window.removeEventListener('hashchange', onHash)
+    const h = () => { const p=page(); if(p==='admin'){window.location.reload();return}; setPg(p); window.scrollTo(0,0) }
+    window.addEventListener('hashchange', h)
+    return ()=>window.removeEventListener('hashchange', h)
   }, [])
 
-  async function loadData() {
-    setLoading(true)
-    try {
-      const [{ data: p }, { data: pr }] = await Promise.all([
-        supabase.from('products').select('*').eq('visible', true).order('name'),
-        supabase.from('promos').select('*').gte('end_date', new Date().toISOString()),
-      ])
-      const prods = p || []
-      setProducts(prods)
-      setPromos(pr || [])
-      const cats = ['All', ...new Set(prods.map(x => x.category).filter(Boolean))]
-      setCategories(cats)
-    } catch (e) {
-      console.error('Load error:', e)
-    }
+  async function load() {
+    const [{ data: p },{ data: pr }] = await Promise.all([
+      supabase.from('products').select('*').eq('visible',true).order('name'),
+      supabase.from('promos').select('*').gte('end_date', new Date().toISOString()),
+    ])
+    setProducts(p||[])
+    setPromos(pr||[])
+    setCats(['All', ...new Set((p||[]).map(x=>x.category).filter(Boolean))])
     setLoading(false)
   }
 
-  const go = useCallback((pg, hash) => {
-    setPage(pg)
-    window.location.hash = hash
-    window.scrollTo(0, 0)
-  }, [])
-
-  const showToast = useCallback((msg) => {
-    setToast(msg)
-    setTimeout(() => setToast(''), 2000)
-  }, [])
-
-  const getPromo = pid => promos.find(pr => pr.product_id === pid && new Date(pr.end_date) > new Date())
-  const heroProducts = products.filter(p => p.image).slice(0, 5)
-
-  const filtered = products.filter(p => {
-    if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.category?.toLowerCase().includes(search.toLowerCase())) return false
-    if (catFilter !== 'All' && p.category !== catFilter) return false
+  const go = useCallback((p,h)=>{ setPg(p); window.location.hash=h; window.scrollTo(0,0) },[])
+  const toast_ = m=>{ setToast(m); setTimeout(()=>setToast(''),2000) }
+  const promo  = id => promos.find(pr=>pr.product_id===id && new Date(pr.end_date)>new Date())
+  const heroes = products.filter(p=>p.image).slice(0,5)
+  const filtered = products.filter(p=>{
+    if (q && !p.name.toLowerCase().includes(q.toLowerCase()) && !p.category?.toLowerCase().includes(q.toLowerCase())) return false
+    if (cat!=='All' && p.category!==cat) return false
     return true
   })
 
-  // Cart
-  const addToCart = useCallback((p) => {
-    const promo = getPromo(p.id)
-    const price = promo ? promo.price : p.price
-    setCart(c => {
-      const ex = c.find(x => x.id === p.id)
-      if (ex) return c.map(x => x.id === p.id ? { ...x, qty: x.qty + 1 } : x)
-      return [...c, { id: p.id, name: p.name, price, img: p.image, qty: 1 }]
-    })
-    showToast(`${p.name.slice(0, 28)} added`)
-  }, [promos])
+  const addCart = useCallback(p=>{
+    const pr=promo(p.id); const price=pr?pr.price:p.price
+    setCart(c=>{ const e=c.find(x=>x.id===p.id); if(e) return c.map(x=>x.id===p.id?{...x,qty:x.qty+1}:x); return [...c,{id:p.id,name:p.name,price,img:p.image,qty:1}] })
+    toast_(p.name.slice(0,30)+' added')
+  },[promos])
+  const updQty = (id,d)=>setCart(c=>c.map(x=>x.id===id?{...x,qty:Math.max(1,x.qty+d)}:x))
+  const remCart = id=>setCart(c=>c.filter(x=>x.id!==id))
+  const cc = cart.reduce((a,c)=>a+c.qty,0)
+  const ct = cart.reduce((a,c)=>a+c.price*c.qty,0)
 
-  const updQty = (id, d) => setCart(c => c.map(x => x.id === id ? { ...x, qty: Math.max(1, x.qty + d) } : x))
-  const removeFromCart = id => setCart(c => c.filter(x => x.id !== id))
-  const cc = cart.reduce((a, c) => a + c.qty, 0)
-  const ct = cart.reduce((a, c) => a + c.price * c.qty, 0)
-
-  // Place order
-  async function placeOrder() {
-    if (!custName.trim() || !custPhone.trim() || (fulfillment === 'delivery' && !custAddress.trim())) return
+  async function checkout() {
+    if (!name.trim()||!phone.trim()||(fulfill==='delivery'&&!addr.trim())) return
     setSubmitting(true)
     try {
       await loadPaystack()
-      const { data: noData } = await supabase.rpc('generate_wa_order_no').catch(() => ({ data: null }))
-      const orderNo = noData || `EST-${Date.now().toString(36).toUpperCase()}`
-      const items = cart.map(c => ({ name: c.name, qty: c.qty, price: c.price }))
-      const ref = `PAY-${orderNo}-${Date.now()}`
-
-      await supabase.from('whatsapp_orders').insert({
-        order_no: orderNo,
-        date: new Date().toISOString(),
-        customer_name: custName.trim(),
-        customer_phone: formatPhone(custPhone.trim()),
-        items,
-        subtotal: ct,
-        delivery_fee: 0,
-        total: ct,
-        address: fulfillment === 'pickup' ? 'PICKUP' : custAddress.trim(),
-        notes: custNotes.trim(),
-        status: 'Pending',
-        paystack_ref: ref,
-        created_at: new Date().toISOString(),
-      })
-
-      const handler = window.PaystackPop.setup({
-        key: PAYSTACK_KEY,
-        email: formatPhone(custPhone.trim()) + '@estereahome.com',
-        amount: Math.round(ct * 100),
-        currency: 'GHS',
-        ref,
-        channels: ['mobile_money'],
-        metadata: { order_no: orderNo, customer_name: custName.trim(), items },
-        callback: async (response) => {
-          await supabase.from('whatsapp_orders').update({
-            status: 'Paid',
-            paystack_ref: response.reference,
-            paid_at: new Date().toISOString(),
-          }).eq('order_no', orderNo)
-          setOrderResult({ orderNo, total: ct, fulfillment })
-          setCart([])
-          setCustName(''); setCustPhone(''); setCustAddress(''); setCustNotes('')
-          go('success', '/success')
-          setSubmitting(false)
+      const {data:no}=await supabase.rpc('generate_wa_order_no').catch(()=>({data:null}))
+      const orderNo = no||`EST-${Date.now().toString(36).toUpperCase()}`
+      const items = cart.map(c=>({name:c.name,qty:c.qty,price:c.price}))
+      const ref   = `PAY-${orderNo}-${Date.now()}`
+      await supabase.from('whatsapp_orders').insert({ order_no:orderNo, date:new Date().toISOString(), customer_name:name.trim(), customer_phone:fmtPh(phone.trim()), items, subtotal:ct, delivery_fee:0, total:ct, address:fulfill==='pickup'?'PICKUP':addr.trim(), notes:notes.trim(), status:'Pending', paystack_ref:ref, created_at:new Date().toISOString() })
+      window.PaystackPop.setup({ key:PAYSTACK_KEY, email:fmtPh(phone.trim())+'@estereahome.com', amount:Math.round(ct*100), currency:'GHS', ref, channels:['mobile_money'], metadata:{order_no:orderNo},
+        callback: async resp=>{
+          await supabase.from('whatsapp_orders').update({status:'Paid',paystack_ref:resp.reference,paid_at:new Date().toISOString()}).eq('order_no',orderNo)
+          setOrderResult({orderNo,total:ct,fulfill}); setCart([]); setName(''); setPhone(''); setAddr(''); setNotes('')
+          go('success','/success'); setSubmitting(false)
         },
-        onClose: () => setSubmitting(false),
-      })
-      handler.openIframe()
-    } catch (e) {
-      console.error(e)
-      setSubmitting(false)
-      showToast('Something went wrong. Try again.')
-    }
+        onClose:()=>setSubmitting(false),
+      }).openIframe()
+    } catch(e){ console.error(e); setSubmitting(false); toast_('Something went wrong. Try again.') }
   }
 
-  // Track
-  async function trackOrder() {
-    if (!trackPhone.trim()) return
-    setTracking(true)
-    const phone = formatPhone(trackPhone.trim())
-    const { data } = await supabase.from('whatsapp_orders').select('*').eq('customer_phone', phone).order('date', { ascending: false }).limit(10)
-    setTrackOrders(data || [])
-    setTracked(true)
-    setTracking(false)
+  async function track() {
+    if(!tPhone.trim()) return; setTracking(true)
+    const {data}=await supabase.from('whatsapp_orders').select('*').eq('customer_phone',fmtPh(tPhone.trim())).order('date',{ascending:false}).limit(10)
+    setTOrders(data||[]); setTracked(true); setTracking(false)
   }
 
-  const statusColor = s => {
-    if (s === 'Paid' || s === 'Completed') return 'bg-[#e8f5ee] text-[#2d7a4f]'
-    if (s === 'Pending') return 'bg-[#fef3e2] text-[#c67d00]'
-    if (s === 'Cancelled') return 'bg-[#fde8e8] text-[#c8382b]'
-    return 'bg-[#f0ede8] text-[#8a7d72]'
+  const statusBadge = s => {
+    if (s==='Paid'||s==='Completed') return 'tag tag-green'
+    if (s==='Pending') return 'tag tag-amber'
+    if (s==='Cancelled') return 'tag tag-red'
+    return 'tag tag-gray'
+  }
+
+  const S = { // shared inline styles
+    page: { maxWidth:1100, margin:'0 auto', padding:'0 20px' },
+    narrow: { maxWidth:520, margin:'0 auto', padding:'0 20px' },
+    rule: { borderBottom:'1px solid #e2e2e2' },
   }
 
   return (
-    <div className="min-h-screen bg-[#fafaf8] pb-20 md:pb-0" style={{ fontFamily: 'var(--font-body)' }}>
+    <div style={{ minHeight:'100vh', background:'#fff', fontFamily:'var(--sans)', paddingBottom: 72 }}>
+
       {/* Toast */}
       {toast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] fade-in pointer-events-none">
-          <div className="bg-[#1a1a1a] text-white px-5 py-2.5 rounded-full text-[12px] font-medium shadow-xl max-w-[280px] text-center">{toast}</div>
+        <div className="anim-fade" style={{ position:'fixed', top:16, left:'50%', transform:'translateX(-50%)', background:'#111', color:'#fff', padding:'8px 18px', fontSize:12, fontWeight:500, zIndex:200, whiteSpace:'nowrap', pointerEvents:'none' }}>
+          {toast}
         </div>
       )}
 
       {/* ── NAV ── */}
-      <header className="sticky top-0 z-50 bg-[#fafaf8]/95 backdrop-blur-xl border-b border-[#e8e4df]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-[58px] flex items-center justify-between gap-4">
-          <button onClick={() => go('home', '/')} className="shrink-0">
-            <span className="text-[20px] font-semibold tracking-tight text-[#1a1a1a]" style={{ fontFamily: 'var(--font-display)' }}>Esterea Home</span>
+      <nav style={{ position:'sticky', top:0, zIndex:50, background:'rgba(255,255,255,.96)', backdropFilter:'blur(12px)', borderBottom:'1px solid #e2e2e2' }}>
+        <div style={{ ...S.page, display:'flex', alignItems:'center', justifyContent:'space-between', height:56 }}>
+          <button onClick={()=>go('home','/')} style={{ background:'none', border:'none', cursor:'pointer', fontFamily:'var(--serif)', fontSize:20, fontWeight:400, color:'#111', letterSpacing:'-.01em' }}>
+            Esterea Home
           </button>
-
-          <nav className="hidden md:flex items-center gap-7">
-            {[['Home','home','/'],['Shop','shop','/shop'],['Track Order','track','/track']].map(([l,p,h]) => (
-              <button key={p} onClick={() => go(p,h)}
-                className={`text-[12.5px] font-medium transition-colors ${page===p ? 'text-[#1a1a1a]' : 'text-[#a89d93] hover:text-[#1a1a1a]'}`}>{l}</button>
+          <div style={{ display:'flex', alignItems:'center', gap:28 }}>
+            {[['Home','home','/'],['Shop','shop','/shop'],['Track','track','/track']].map(([l,p,h])=>(
+              <button key={p} onClick={()=>go(p,h)} style={{ display:'none', background:'none', border:'none', cursor:'pointer', fontSize:12, fontWeight:500, letterSpacing:'.03em', color:pg===p?'#111':'#999', transition:'color .15s' }}
+                className="desktop-nav-link">{l}</button>
             ))}
-          </nav>
-
-          <div className="flex items-center gap-1">
-            <button onClick={() => { setShowSearch(s => !s); if (page !== 'shop') go('shop', '/shop') }}
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-[#8a7d72] hover:text-[#1a1a1a] hover:bg-[#f0ede8] transition">
-              {Icons.search}
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+            <button onClick={()=>{setShowQ(s=>!s);if(pg!=='shop')go('shop','/shop')}} style={{ background:'none', border:'none', cursor:'pointer', width:40, height:40, display:'flex', alignItems:'center', justifyContent:'center', color:'#888' }}>
+              {showQ ? Ico.x : Ico.search}
             </button>
-            <button onClick={() => go('cart', '/cart')}
-              className="relative w-10 h-10 rounded-xl flex items-center justify-center text-[#8a7d72] hover:text-[#1a1a1a] hover:bg-[#f0ede8] transition">
-              {Icons.cart}
-              {cc > 0 && <span className="absolute top-1 right-1 w-4 h-4 bg-[#1a1a1a] text-white text-[9px] font-bold rounded-full flex items-center justify-center">{cc}</span>}
+            <button onClick={()=>go('cart','/cart')} style={{ background:'none', border:'none', cursor:'pointer', width:40, height:40, display:'flex', alignItems:'center', justifyContent:'center', color:'#888', position:'relative' }}>
+              {Ico.cart}
+              {cc>0 && <span style={{ position:'absolute', top:6, right:6, width:16, height:16, background:'#111', color:'#fff', borderRadius:'50%', fontSize:9, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{cc}</span>}
             </button>
           </div>
         </div>
-        {showSearch && (
-          <div className="px-4 sm:px-6 pb-3 max-w-6xl mx-auto slide-down">
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#a89d93]">{Icons.search}</span>
-              <input autoFocus className="w-full h-11 pl-10 pr-4 bg-[#f0ede8] rounded-xl text-[13px] border-none focus:outline-none focus:ring-2 focus:ring-[#1a1a1a]/10 transition"
-                placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} />
-              {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#a89d93] hover:text-[#1a1a1a]">{Icons.x}</button>}
+        {showQ && (
+          <div className="anim-fade" style={{ ...S.page, paddingBottom:12 }}>
+            <input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Search products…" style={{ width:'100%', height:40, padding:'0 12px', borderRadius:2, fontSize:13 }} />
+          </div>
+        )}
+      </nav>
+
+      <style>{`.desktop-nav-link { display: none !important } @media(min-width:700px){ .desktop-nav-link { display: block !important } } .card:hover .card-add-btn { opacity: 1 !important }`}</style>
+
+      {/* ══════ HOME ══════ */}
+      {pg==='home' && <>
+        {/* Hero */}
+        <div style={{ position:'relative', height:'min(68vh,500px)', background:'#111', overflow:'hidden' }}>
+          {heroes.map((p,i)=>(
+            <div key={p.id} style={{ position:'absolute', inset:0, opacity:i===heroI?1:0, transition:'opacity 1s ease' }}>
+              <img src={img(p.image,1400)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', filter:'brightness(.45)' }} />
+            </div>
+          ))}
+          {!heroes.length && <div style={{ position:'absolute', inset:0, background:'#1a1a1a' }} />}
+          <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top, rgba(0,0,0,.7) 0%, transparent 55%)' }} />
+          <div style={{ position:'relative', zIndex:1, height:'100%', display:'flex', flexDirection:'column', justifyContent:'flex-end', ...S.page, paddingBottom:48 }}>
+            <p style={{ fontSize:10, letterSpacing:'.2em', textTransform:'uppercase', color:'rgba(255,255,255,.5)', marginBottom:16 }}>Accra, Ghana</p>
+            <h1 className="anim-up" style={{ fontFamily:'var(--serif)', fontSize:'clamp(32px,6vw,64px)', fontWeight:400, color:'#fff', lineHeight:1.1, marginBottom:20 }}>
+              Your home,<br/>beautifully dressed.
+            </h1>
+            <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+              <button onClick={()=>go('shop','/shop')} className="btn btn-dark" style={{ padding:'11px 28px', borderRadius:2, fontSize:12, letterSpacing:'.04em' }}>
+                Shop Now
+              </button>
+              <a href={`https://wa.me/${WA}`} target="_blank" rel="noreferrer" style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'11px 20px', border:'1px solid rgba(255,255,255,.3)', color:'rgba(255,255,255,.75)', fontSize:12, fontWeight:500, letterSpacing:'.03em', textDecoration:'none', transition:'border-color .15s' }}>
+                {Ico.wa} WhatsApp
+              </a>
+            </div>
+            {heroes.length>1 && (
+              <div style={{ display:'flex', gap:6, marginTop:28 }}>
+                {heroes.map((_,i)=>(
+                  <button key={i} onClick={()=>setHeroI(i)} style={{ border:'none', cursor:'pointer', borderRadius:0, background: i===heroI?'#fff':'rgba(255,255,255,.25)', width: i===heroI?28:7, height:3, padding:0, transition:'all .4s ease' }} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Category pills */}
+        {cats.length>1 && (
+          <div style={{ borderBottom:'1px solid #e2e2e2', overflow:'hidden' }}>
+            <div className="scrollbar-hide" style={{ ...S.page, display:'flex', gap:0, overflowX:'auto', paddingTop:20, paddingBottom:0 }}>
+              {cats.map(c=>(
+                <button key={c} onClick={()=>{setCat(c);go('shop','/shop')}}
+                  style={{ background:'none', border:'none', borderBottom: c===cat?'2px solid #111':'2px solid transparent', cursor:'pointer', padding:'8px 16px', fontSize:12, fontWeight:500, letterSpacing:'.04em', color: c===cat?'#111':'#999', whiteSpace:'nowrap', transition:'color .15s, border-color .15s', flexShrink:0 }}>
+                  {c}
+                </button>
+              ))}
             </div>
           </div>
         )}
-      </header>
 
-      {/* ═══════════════ HOME ═══════════════ */}
-      {page === 'home' && (
-        <main>
-          {/* Hero */}
-          <section className="relative overflow-hidden" style={{ height: 'min(70vh, 520px)', background: '#1a1a1a' }}>
-            {heroProducts.map((p, i) => (
-              <div key={p.id} className="absolute inset-0 transition-opacity duration-1000" style={{ opacity: i === heroIdx ? 1 : 0 }}>
-                <img src={thumb(p.image, 1400)} alt="" className="w-full h-full object-cover" style={{ filter: 'brightness(0.45)' }} />
+        {/* Products */}
+        <div style={{ ...S.page, padding:'40px 20px 60px' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:28 }}>
+            <h2 style={{ fontFamily:'var(--serif)', fontSize:28, fontWeight:400 }}>Our Collection</h2>
+            {products.length>8 && <button onClick={()=>go('shop','/shop')} style={{ background:'none', border:'none', cursor:'pointer', fontSize:12, color:'#999', textDecoration:'underline' }}>View all</button>}
+          </div>
+          {loading
+            ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:24 }}>{[...Array(8)].map((_,i)=><CardSkel key={i}/>)}</div>
+            : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:24 }}>
+                {products.slice(0,8).map((p,i)=><div key={p.id} className={`d${Math.min(i+1,4)}`}><Card p={p} promo={promo(p.id)} onOpen={()=>{setDetail(p);go('detail','/detail')}} onAdd={()=>addCart(p)}/></div>)}
+              </div>
+          }
+        </div>
+
+        {/* Strip */}
+        <div style={{ background:'#111', padding:'48px 20px' }}>
+          <div style={{ ...S.page, display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:32 }}>
+            {[['Curated Quality','Every piece is handpicked for Ghanaian homes.'],['Nationwide Delivery','We deliver across Ghana — fast and reliable.'],['WhatsApp Support','Questions? Message us anytime.']].map(([t,d])=>(
+              <div key={t}>
+                <div style={{ fontFamily:'var(--serif)', fontSize:18, color:'#fff', marginBottom:6 }}>{t}</div>
+                <div style={{ fontSize:12, color:'rgba(255,255,255,.45)', lineHeight:1.6 }}>{d}</div>
               </div>
             ))}
-            {heroProducts.length === 0 && (
-              <div className="absolute inset-0 bg-[#2a2520]" />
-            )}
-            <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(26,26,26,0.9) 0%, transparent 60%)' }} />
-            <div className="relative z-10 h-full flex flex-col justify-end max-w-6xl mx-auto px-4 sm:px-6 pb-12">
-              <div className="fade-up">
-                <p className="text-[10px] uppercase tracking-[0.3em] text-[#c8bfb4] mb-3">Premium Home Decor · Accra, Ghana</p>
-                <h1 className="text-4xl md:text-6xl font-semibold text-white leading-tight mb-4" style={{ fontFamily: 'var(--font-display)' }}>
-                  Make your home<br />feel extraordinary.
-                </h1>
-                <p className="text-[#a89d93] text-sm max-w-md mb-8">Handpicked home decor, furnishings & accessories — delivered across Ghana.</p>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <button onClick={() => go('shop', '/shop')}
-                    className="h-12 px-8 bg-white text-[#1a1a1a] rounded-full text-[12.5px] font-semibold hover:bg-[#f0ede8] transition press flex items-center gap-2">
-                    Shop Now {Icons.arrow}
-                  </button>
-                  <a href={`https://wa.me/${SHOP.wa}`} target="_blank" rel="noreferrer"
-                    className="h-12 px-6 border border-white/20 text-white/70 rounded-full text-[12.5px] font-medium hover:bg-white/5 transition flex items-center gap-2">
-                    {Icons.wa} WhatsApp
-                  </a>
-                </div>
-              </div>
-              {heroProducts.length > 1 && (
-                <div className="flex gap-2 mt-8">
-                  {heroProducts.map((_, i) => (
-                    <button key={i} onClick={() => setHeroIdx(i)}
-                      className={`rounded-full transition-all duration-500 ${i === heroIdx ? 'w-8 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/30 hover:bg-white/60'}`} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
+          </div>
+        </div>
+      </>}
 
-          {/* Categories */}
-          {categories.length > 1 && (
-            <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-2">
-              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-                {categories.map(c => (
-                  <button key={c} onClick={() => { setCatFilter(c); go('shop', '/shop') }}
-                    className="px-4 py-2 rounded-full text-[11.5px] font-medium whitespace-nowrap transition press border border-[#e8e4df] hover:border-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white bg-white text-[#5a5048]">
-                    {c}
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Products */}
-          <section className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-            <div className="flex items-baseline justify-between mb-6">
-              <h2 className="text-2xl font-semibold text-[#1a1a1a]" style={{ fontFamily: 'var(--font-display)' }}>Our Collection</h2>
-              {products.length > 8 && (
-                <button onClick={() => go('shop', '/shop')} className="text-[12px] text-[#a89d93] hover:text-[#1a1a1a] transition flex items-center gap-1">
-                  View all {Icons.arrow}
-                </button>
-              )}
-            </div>
-            {loading ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-                {[...Array(8)].map((_, i) => <CardSkeleton key={i} />)}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-                {products.slice(0, 8).map((p, i) => (
-                  <div key={p.id} className={`fade-up stagger-${Math.min(i + 1, 4)}`}>
-                    <Card p={p} promo={getPromo(p.id)} onOpen={() => { setDetail(p); go('detail', '/detail') }} onAdd={() => addToCart(p)} />
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* About strip */}
-          <section className="bg-[#1a1a1a] py-12 mt-6">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-              {[
-                ['✦', 'Curated Selection', 'Only the finest home decor pieces, handpicked for quality and style.'],
-                ['◈', 'Ghana-wide Delivery', 'Fast, reliable delivery to your door anywhere in Ghana.'],
-                ['◇', 'Quality Guaranteed', 'Every product meets our quality standards. Shop with confidence.'],
-              ].map(([icon, title, desc]) => (
-                <div key={title} className="text-white/80">
-                  <div className="text-2xl mb-3 text-[#c8bfb4]">{icon}</div>
-                  <div className="text-sm font-semibold text-white mb-1">{title}</div>
-                  <div className="text-[12px] text-[#8a7d72] leading-relaxed">{desc}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-        </main>
-      )}
-
-      {/* ═══════════════ SHOP ═══════════════ */}
-      {page === 'shop' && (
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-          {/* Category filter */}
-          {categories.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-7 pb-1">
-              {categories.map(c => (
-                <button key={c} onClick={() => setCatFilter(c)}
-                  className={`px-4 py-2 rounded-full text-[11.5px] font-medium whitespace-nowrap transition press border ${catFilter===c ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]' : 'border-[#e8e4df] text-[#5a5048] hover:border-[#1a1a1a]'}`}>
+      {/* ══════ SHOP ══════ */}
+      {pg==='shop' && (
+        <div style={{ ...S.page, padding:'32px 20px 60px' }}>
+          {cats.length>1 && (
+            <div className="scrollbar-hide" style={{ display:'flex', gap:0, overflowX:'auto', marginBottom:28, borderBottom:'1px solid #e2e2e2', paddingBottom:0 }}>
+              {cats.map(c=>(
+                <button key={c} onClick={()=>setCat(c)} style={{ background:'none', border:'none', borderBottom:c===cat?'2px solid #111':'2px solid transparent', cursor:'pointer', padding:'8px 16px', fontSize:12, fontWeight:500, letterSpacing:'.04em', color:c===cat?'#111':'#999', whiteSpace:'nowrap', transition:'color .15s', flexShrink:0 }}>
                   {c}
                 </button>
               ))}
             </div>
           )}
-          {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-              {[...Array(8)].map((_, i) => <CardSkeleton key={i} />)}
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="py-24 text-center">
-              <div className="text-4xl mb-3 text-[#e8e4df]">○</div>
-              <p className="text-[#a89d93] text-sm">No products found.</p>
-              {search && <button onClick={() => setSearch('')} className="mt-3 text-[12px] text-[#1a1a1a] underline">Clear search</button>}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-              {filtered.map((p, i) => (
-                <div key={p.id} className={`fade-up stagger-${Math.min(i%4+1,4)}`}>
-                  <Card p={p} promo={getPromo(p.id)} onOpen={() => { setDetail(p); go('detail', '/detail') }} onAdd={() => addToCart(p)} />
+          {loading
+            ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:24 }}>{[...Array(8)].map((_,i)=><CardSkel key={i}/>)}</div>
+            : filtered.length===0
+              ? <div style={{ padding:'80px 0', textAlign:'center', color:'#bbb', fontSize:14 }}>No products found.</div>
+              : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:24 }}>
+                  {filtered.map((p,i)=><div key={p.id} className={`d${Math.min(i%4+1,4)}`}><Card p={p} promo={promo(p.id)} onOpen={()=>{setDetail(p);go('detail','/detail')}} onAdd={()=>addCart(p)}/></div>)}
                 </div>
-              ))}
-            </div>
-          )}
-        </main>
+          }
+        </div>
       )}
 
-      {/* ═══════════════ DETAIL ═══════════════ */}
-      {page === 'detail' && detail && (
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-          <button onClick={() => go('shop', '/shop')} className="flex items-center gap-2 text-[#a89d93] hover:text-[#1a1a1a] transition text-[12.5px] mb-6">
-            {Icons.arrowLeft} Back to shop
+      {/* ══════ DETAIL ══════ */}
+      {pg==='detail' && detail && (
+        <div style={{ ...S.page, padding:'32px 20px 60px' }}>
+          <button onClick={()=>go('shop','/shop')} style={{ background:'none', border:'none', cursor:'pointer', display:'flex', alignItems:'center', gap:6, color:'#888', fontSize:12, marginBottom:28 }}>
+            {Ico.back} Back
           </button>
-          <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-            <div className="aspect-square bg-[#f5f2ee] rounded-2xl overflow-hidden">
-              {detail.image
-                ? <img src={thumb(detail.image, 900)} alt={detail.name} className="w-full h-full object-cover" />
-                : <div className="w-full h-full flex items-center justify-center text-[#c8bfb4] text-7xl font-light" style={{fontFamily:'var(--font-display)'}}>E</div>
-              }
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:48, alignItems:'start' }}>
+            <div style={{ aspectRatio:'1/1', background:'#f5f5f3', borderRadius:2, overflow:'hidden' }}>
+              {detail.image ? <img src={img(detail.image,900)} alt={detail.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : null}
             </div>
-            <div className="flex flex-col justify-center fade-up">
-              <div className="text-[10px] text-[#a89d93] uppercase tracking-widest mb-2">{detail.category}</div>
-              <h1 className="text-3xl font-semibold text-[#1a1a1a] leading-tight mb-3" style={{fontFamily:'var(--font-display)'}}>{detail.name}</h1>
-              {detail.description && <p className="text-[13.5px] text-[#5a5048] leading-relaxed mb-5">{detail.description}</p>}
-              <div className="flex items-baseline gap-3 mb-6">
-                {getPromo(detail.id) ? <>
-                  <span className="text-2xl font-semibold text-[#1a1a1a]">{money(getPromo(detail.id).price)}</span>
-                  <span className="text-base text-[#c8bfb4] line-through">{money(detail.price)}</span>
-                </> : <span className="text-2xl font-semibold text-[#1a1a1a]">{money(detail.price)}</span>}
+            <div className="anim-up">
+              {detail.category && <div style={{ fontSize:10, letterSpacing:'.12em', textTransform:'uppercase', color:'#aaa', marginBottom:10 }}>{detail.category}</div>}
+              <h1 style={{ fontFamily:'var(--serif)', fontSize:32, fontWeight:400, lineHeight:1.2, marginBottom:16 }}>{detail.name}</h1>
+              {detail.description && <p style={{ fontSize:13, color:'#666', lineHeight:1.7, marginBottom:20 }}>{detail.description}</p>}
+              <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:28 }}>
+                <span style={{ fontSize:22, fontWeight:500 }}>{ghs(promo(detail.id)?promo(detail.id).price:detail.price)}</span>
+                {promo(detail.id) && <span style={{ fontSize:14, color:'#bbb', textDecoration:'line-through' }}>{ghs(detail.price)}</span>}
               </div>
-              <button onClick={() => addToCart(detail)}
-                className="w-full h-12 bg-[#1a1a1a] text-white rounded-xl text-[13px] font-semibold hover:bg-[#333] transition press mb-3">
+              <button onClick={()=>addCart(detail)} className="btn btn-dark" style={{ width:'100%', justifyContent:'center', padding:'14px 0', borderRadius:2, fontSize:13, letterSpacing:'.04em', marginBottom:12 }}>
                 Add to Cart
               </button>
-              <a href={`https://wa.me/${SHOP.wa}?text=Hi, I'm interested in: ${detail.name}`} target="_blank" rel="noreferrer"
-                className="w-full h-12 border border-[#e8e4df] text-[#5a5048] rounded-xl text-[13px] font-medium hover:border-[#1a1a1a] transition flex items-center justify-center gap-2">
-                {Icons.wa} Enquire on WhatsApp
+              <a href={`https://wa.me/${WA}?text=Hi, I'm interested in: ${detail.name}`} target="_blank" rel="noreferrer" className="btn btn-light" style={{ width:'100%', justifyContent:'center', padding:'14px 0', borderRadius:2, fontSize:13, textDecoration:'none' }}>
+                {Ico.wa} Enquire on WhatsApp
               </a>
             </div>
           </div>
-        </main>
+        </div>
       )}
 
-      {/* ═══════════════ CART ═══════════════ */}
-      {page === 'cart' && (
-        <main className="max-w-lg mx-auto px-4 sm:px-6 py-8">
-          <h1 className="text-2xl font-semibold text-[#1a1a1a] mb-1" style={{fontFamily:'var(--font-display)'}}>Cart</h1>
-          <p className="text-[12px] text-[#a89d93] mb-6">{cc > 0 ? `${cc} item${cc !== 1 ? 's' : ''}` : 'Empty'}</p>
-
-          {cart.length === 0 ? (
-            <div className="py-20 text-center">
-              <div className="w-16 h-16 bg-[#f0ede8] rounded-2xl flex items-center justify-center mx-auto mb-4 text-[#c8bfb4]">{Icons.cart}</div>
-              <p className="text-[#a89d93] text-sm mb-5">Your cart is empty</p>
-              <button onClick={() => go('shop', '/shop')} className="h-11 px-7 bg-[#1a1a1a] text-white rounded-full text-[12.5px] font-semibold press">Browse Products</button>
-            </div>
-          ) : (
-            <>
-              <div className="flex justify-end mb-3">
-                <button onClick={() => setCart([])} className="text-[11px] text-[#a89d93] hover:text-[#c8382b] transition">Clear all</button>
+      {/* ══════ CART ══════ */}
+      {pg==='cart' && (
+        <div style={{ ...S.narrow, padding:'32px 20px 60px' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:28 }}>
+            <h1 style={{ fontFamily:'var(--serif)', fontSize:28, fontWeight:400 }}>Cart {cc>0 && <span style={{ fontSize:14, color:'#aaa', fontFamily:'var(--sans)', fontWeight:400 }}>({cc})</span>}</h1>
+            {cc>0 && <button onClick={()=>setCart([])} style={{ background:'none', border:'none', cursor:'pointer', fontSize:11, color:'#bbb', textDecoration:'underline' }}>Clear</button>}
+          </div>
+          {cart.length===0
+            ? <div style={{ padding:'60px 0', textAlign:'center' }}>
+                <p style={{ color:'#bbb', fontSize:13, marginBottom:20 }}>Your cart is empty.</p>
+                <button onClick={()=>go('shop','/shop')} className="btn btn-dark" style={{ padding:'11px 24px', borderRadius:2 }}>Browse</button>
               </div>
-              <div className="space-y-2 mb-6">
-                {cart.map(c => (
-                  <div key={c.id} className="flex gap-3 items-center p-3 rounded-xl bg-white border border-[#e8e4df]">
-                    <div className="w-14 h-14 bg-[#f5f2ee] rounded-lg overflow-hidden shrink-0">
-                      {c.img && <img src={thumb(c.img, 150)} className="w-full h-full object-cover" alt={c.name} />}
+            : <>
+                <div style={{ marginBottom:20 }}>
+                  {cart.map(c=>(
+                    <div key={c.id} style={{ display:'flex', gap:14, alignItems:'center', padding:'14px 0', borderBottom:'1px solid #e2e2e2' }}>
+                      <div style={{ width:56, height:56, background:'#f5f5f3', flexShrink:0, overflow:'hidden', borderRadius:2 }}>
+                        {c.img && <img src={img(c.img,150)} style={{ width:'100%', height:'100%', objectFit:'cover' }} alt={c.name} />}
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:13, fontWeight:500, marginBottom:2 }} className="clip1">{c.name}</div>
+                        <div style={{ fontSize:12, color:'#888' }}>{ghs(c.price)}</div>
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <button onClick={()=>updQty(c.id,-1)} style={{ width:28, height:28, background:'#f5f5f3', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', borderRadius:2 }}>{Ico.minus}</button>
+                        <span style={{ fontSize:13, fontWeight:500, width:20, textAlign:'center' }}>{c.qty}</span>
+                        <button onClick={()=>updQty(c.id,1)} style={{ width:28, height:28, background:'#f5f5f3', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', borderRadius:2 }}>{Ico.plus}</button>
+                        <button onClick={()=>remCart(c.id)} style={{ width:28, height:28, background:'none', border:'none', cursor:'pointer', color:'#ccc', marginLeft:4 }}>{Ico.x}</button>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[12.5px] font-medium truncate text-[#1a1a1a]">{c.name}</div>
-                      <div className="text-[13px] font-semibold text-[#1a1a1a] mt-0.5">{money(c.price)}</div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => updQty(c.id, -1)} className="w-7 h-7 rounded-lg bg-[#f5f2ee] flex items-center justify-center text-[#5a5048] hover:bg-[#e8e4df] transition">{Icons.minus}</button>
-                      <span className="w-7 text-center text-[13px] font-semibold text-[#1a1a1a]">{c.qty}</span>
-                      <button onClick={() => updQty(c.id, 1)} className="w-7 h-7 rounded-lg bg-[#f5f2ee] flex items-center justify-center text-[#5a5048] hover:bg-[#e8e4df] transition">{Icons.plus}</button>
-                    </div>
-                    <button onClick={() => removeFromCart(c.id)} className="w-7 h-7 flex items-center justify-center text-[#c8bfb4] hover:text-[#c8382b] transition">{Icons.x}</button>
-                  </div>
-                ))}
-              </div>
-              <div className="bg-[#1a1a1a] rounded-2xl p-4 flex justify-between items-center mb-4">
-                <span className="text-[13px] text-[#8a7d72]">Total</span>
-                <span className="text-xl font-semibold text-white">{money(ct)}</span>
-              </div>
-              <button onClick={() => go('checkout', '/checkout')} className="w-full h-12 bg-[#1a1a1a] text-white rounded-full text-[13px] font-semibold hover:bg-[#333] transition press">
-                Proceed to Checkout
-              </button>
-            </>
-          )}
-        </main>
+                  ))}
+                </div>
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:16, fontWeight:500, marginBottom:24, paddingTop:4 }}>
+                  <span>Total</span><span>{ghs(ct)}</span>
+                </div>
+                <button onClick={()=>go('checkout','/checkout')} className="btn btn-dark" style={{ width:'100%', justifyContent:'center', padding:'14px 0', borderRadius:2, fontSize:13, letterSpacing:'.04em' }}>
+                  Checkout
+                </button>
+              </>
+          }
+        </div>
       )}
 
-      {/* ═══════════════ CHECKOUT ═══════════════ */}
-      {page === 'checkout' && (
-        <main className="max-w-md mx-auto px-4 sm:px-6 py-8">
-          <button onClick={() => go('cart', '/cart')} className="flex items-center gap-2 text-[#a89d93] hover:text-[#1a1a1a] transition text-[12px] mb-6">
-            {Icons.arrowLeft} Back to cart
-          </button>
-          <h2 className="text-2xl font-semibold text-[#1a1a1a] mb-6" style={{fontFamily:'var(--font-display)'}}>Checkout</h2>
+      {/* ══════ CHECKOUT ══════ */}
+      {pg==='checkout' && (
+        <div style={{ ...S.narrow, padding:'32px 20px 60px' }}>
+          <button onClick={()=>go('cart','/cart')} style={{ background:'none', border:'none', cursor:'pointer', display:'flex', alignItems:'center', gap:6, color:'#888', fontSize:12, marginBottom:24 }}>{Ico.back} Cart</button>
+          <h1 style={{ fontFamily:'var(--serif)', fontSize:28, fontWeight:400, marginBottom:28 }}>Checkout</h1>
 
-          <div className="grid grid-cols-2 gap-2 mb-5 p-1 bg-[#f0ede8] rounded-xl">
-            <button onClick={() => setFulfillment('delivery')}
-              className={`h-10 rounded-lg text-[12px] font-semibold transition ${fulfillment==='delivery' ? 'bg-white text-[#1a1a1a] shadow-sm' : 'text-[#8a7d72]'}`}>
-              Delivery
-            </button>
-            <button onClick={() => setFulfillment('pickup')}
-              className={`h-10 rounded-lg text-[12px] font-semibold transition ${fulfillment==='pickup' ? 'bg-white text-[#1a1a1a] shadow-sm' : 'text-[#8a7d72]'}`}>
-              Pickup
-            </button>
-          </div>
-
-          <div className="space-y-3 mb-5">
-            {[
-              { val: custName, set: setCustName, ph: 'Full name', type: 'text' },
-              { val: custPhone, set: setCustPhone, ph: 'Phone number (for MoMo)', type: 'tel' },
-            ].map(f => (
-              <input key={f.ph} type={f.type} value={f.val} onChange={e => f.set(e.target.value)} placeholder={f.ph}
-                className="w-full h-11 px-4 bg-white border border-[#e8e4df] rounded-xl text-[13px] focus:outline-none focus:border-[#1a1a1a] transition" />
+          <div style={{ display:'flex', gap:8, marginBottom:24, background:'#f5f5f3', padding:4, borderRadius:2 }}>
+            {[['delivery','Delivery'],['pickup','Pickup']].map(([v,l])=>(
+              <button key={v} onClick={()=>setFulfill(v)} style={{ flex:1, padding:'9px 0', background:fulfill===v?'#fff':'transparent', border:'none', cursor:'pointer', fontSize:12, fontWeight:500, color:fulfill===v?'#111':'#888', borderRadius:1, transition:'background .2s' }}>{l}</button>
             ))}
-            {fulfillment === 'delivery' ? (
-              <textarea value={custAddress} onChange={e => setCustAddress(e.target.value)} placeholder="Delivery address"
-                className="w-full h-20 px-4 py-3 bg-white border border-[#e8e4df] rounded-xl text-[13px] focus:outline-none focus:border-[#1a1a1a] transition resize-none" />
-            ) : (
-              <div className="bg-[#f5f2ee] rounded-xl p-3 border border-[#e8e4df] text-[12px] text-[#5a5048]">
-                📍 Pickup from <strong className="text-[#1a1a1a]">{SHOP.address}</strong>
-              </div>
-            )}
-            <input value={custNotes} onChange={e => setCustNotes(e.target.value)} placeholder="Notes (optional)"
-              className="w-full h-11 px-4 bg-white border border-[#e8e4df] rounded-xl text-[13px] focus:outline-none focus:border-[#1a1a1a] transition" />
           </div>
 
-          <div className="bg-[#f5f2ee] rounded-xl p-4 mb-5 border border-[#e8e4df]">
-            <div className="text-[11px] font-semibold text-[#8a7d72] uppercase tracking-wider mb-3">Order Summary</div>
-            {cart.map(c => (
-              <div key={c.id} className="flex justify-between text-[12.5px] py-1">
-                <span className="text-[#5a5048]">{c.qty}× {c.name}</span>
-                <span className="font-semibold text-[#1a1a1a]">{money(c.price * c.qty)}</span>
-              </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:20 }}>
+            {[{val:name,set:setName,ph:'Full name',type:'text'},{val:phone,set:setPhone,ph:'Phone (MoMo number)',type:'tel'}].map(f=>(
+              <input key={f.ph} type={f.type} value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph} style={{ width:'100%', height:44, padding:'0 14px', borderRadius:2 }} />
             ))}
-            <div className="flex justify-between font-semibold text-[13.5px] border-t border-[#e8e4df] pt-3 mt-2">
-              <span>Total</span><span>{money(ct)}</span>
-            </div>
-          </div>
-
-          <button onClick={placeOrder}
-            disabled={!custName.trim() || !custPhone.trim() || (fulfillment==='delivery' && !custAddress.trim()) || submitting}
-            className="w-full h-12 bg-[#1a1a1a] text-white rounded-full text-[13px] font-semibold hover:bg-[#333] transition press disabled:opacity-30 flex items-center justify-center gap-2">
-            {submitting
-              ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</>
-              : <>Pay {money(ct)} · MoMo</>
+            {fulfill==='delivery'
+              ? <textarea value={addr} onChange={e=>setAddr(e.target.value)} placeholder="Delivery address" style={{ width:'100%', height:72, padding:'12px 14px', resize:'none', borderRadius:2 }} />
+              : <div style={{ background:'#f5f5f3', padding:12, fontSize:12, color:'#666', borderRadius:2 }}>📍 Pickup at Accra, Ghana</div>
             }
+            <input value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Notes (optional)" style={{ width:'100%', height:44, padding:'0 14px', borderRadius:2 }} />
+          </div>
+
+          <div style={{ borderTop:'1px solid #e2e2e2', paddingTop:16, marginBottom:20 }}>
+            {cart.map(c=>(
+              <div key={c.id} style={{ display:'flex', justifyContent:'space-between', fontSize:12, padding:'4px 0', color:'#666' }}>
+                <span>{c.qty}× {c.name}</span><span style={{ fontWeight:500 }}>{ghs(c.price*c.qty)}</span>
+              </div>
+            ))}
+            <div style={{ display:'flex', justifyContent:'space-between', fontWeight:500, fontSize:14, borderTop:'1px solid #e2e2e2', marginTop:10, paddingTop:10 }}>
+              <span>Total</span><span>{ghs(ct)}</span>
+            </div>
+          </div>
+
+          <button onClick={checkout} disabled={!name.trim()||!phone.trim()||(fulfill==='delivery'&&!addr.trim())||submitting} className="btn btn-dark" style={{ width:'100%', justifyContent:'center', padding:'14px 0', borderRadius:2, fontSize:13, letterSpacing:'.04em', opacity:(!name.trim()||!phone.trim()||(fulfill==='delivery'&&!addr.trim())||submitting)?0.4:1 }}>
+            {submitting ? 'Processing…' : `Pay ${ghs(ct)} · MoMo`}
           </button>
-          <p className="text-center text-[10.5px] text-[#c8bfb4] mt-3">Secured by Paystack · Mobile Money</p>
-        </main>
+          <p style={{ textAlign:'center', fontSize:11, color:'#ccc', marginTop:10 }}>Secured by Paystack</p>
+        </div>
       )}
 
-      {/* ═══════════════ SUCCESS ═══════════════ */}
-      {page === 'success' && orderResult && (
-        <main className="max-w-sm mx-auto px-4 py-16 text-center fade-up">
-          <div className="w-16 h-16 bg-[#e8f5ee] rounded-2xl flex items-center justify-center mx-auto mb-5 text-[#2d7a4f]">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
-          </div>
-          <h1 className="text-2xl font-semibold text-[#1a1a1a] mb-2" style={{fontFamily:'var(--font-display)'}}>Order Confirmed!</h1>
-          <p className="text-[13px] text-[#8a7d72] mb-7">Payment received. We'll be in touch shortly.</p>
-          <div className="bg-[#f5f2ee] rounded-2xl p-4 text-left mb-7 space-y-2">
-            {[
-              ['Order', <span className="font-mono font-semibold text-[#1a1a1a] text-[12px]">{orderResult.orderNo}</span>],
-              ['Total', <span className="font-semibold">{money(orderResult.total)}</span>],
-              [orderResult.fulfillment==='pickup' ? 'Pickup' : 'Delivery', <span className="text-[#5a5048]">{orderResult.fulfillment==='pickup' ? SHOP.address : "We'll contact you"}</span>],
-            ].map(([k,v]) => (
-              <div key={k} className="flex justify-between items-center text-[13px]">
-                <span className="text-[#a89d93]">{k}</span>{v}
+      {/* ══════ SUCCESS ══════ */}
+      {pg==='success' && orderResult && (
+        <div className="anim-up" style={{ ...S.narrow, padding:'64px 20px', textAlign:'center' }}>
+          <div style={{ width:56, height:56, background:'#111', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 24px', color:'#fff', fontSize:22 }}>✓</div>
+          <h1 style={{ fontFamily:'var(--serif)', fontSize:28, fontWeight:400, marginBottom:8 }}>Order Confirmed</h1>
+          <p style={{ color:'#888', fontSize:13, marginBottom:32 }}>Payment received. We'll be in touch shortly.</p>
+          <div style={{ textAlign:'left', borderTop:'1px solid #e2e2e2', borderBottom:'1px solid #e2e2e2', padding:'16px 0', marginBottom:28 }}>
+            {[['Order',<code style={{ fontFamily:'var(--sans)', fontWeight:600 }}>{orderResult.orderNo}</code>],['Total',ghs(orderResult.total)],[orderResult.fulfill==='pickup'?'Pickup':'Delivery',orderResult.fulfill==='pickup'?'Accra, Ghana':"We'll contact you"]].map(([k,v])=>(
+              <div key={k} style={{ display:'flex', justifyContent:'space-between', padding:'6px 0', fontSize:13 }}>
+                <span style={{ color:'#888' }}>{k}</span><span style={{ fontWeight:500 }}>{v}</span>
               </div>
             ))}
           </div>
-          <a href={`https://wa.me/${SHOP.wa}?text=Hi! I just placed order ${orderResult.orderNo}. Can you confirm delivery?`} target="_blank" rel="noreferrer"
-            className="flex items-center justify-center gap-2 w-full h-11 bg-[#2d7a4f] text-white rounded-full text-[12.5px] font-semibold mb-3 press hover:bg-[#25663f] transition">
-            {Icons.wa} Confirm on WhatsApp
+          <a href={`https://wa.me/${WA}?text=Hi! Order ${orderResult.orderNo} — confirming delivery.`} target="_blank" rel="noreferrer" className="btn" style={{ background:'#25d366', color:'#fff', padding:'12px 24px', borderRadius:2, fontSize:12, letterSpacing:'.03em', textDecoration:'none', justifyContent:'center', marginBottom:14, display:'flex', gap:8 }}>
+            {Ico.wa} Confirm on WhatsApp
           </a>
-          <button onClick={() => go('home', '/')} className="text-[12.5px] text-[#a89d93] hover:text-[#1a1a1a] transition">Continue Shopping →</button>
-        </main>
+          <button onClick={()=>go('home','/')} style={{ background:'none', border:'none', cursor:'pointer', fontSize:12, color:'#aaa', textDecoration:'underline' }}>Continue Shopping</button>
+        </div>
       )}
 
-      {/* ═══════════════ TRACK ═══════════════ */}
-      {page === 'track' && (
-        <main className="max-w-lg mx-auto px-4 sm:px-6 py-8">
-          <h1 className="text-2xl font-semibold text-[#1a1a1a] mb-1" style={{fontFamily:'var(--font-display)'}}>Track Order</h1>
-          <p className="text-[13px] text-[#8a7d72] mb-7">Enter your phone number to view your orders.</p>
-          <div className="flex gap-2 mb-8">
-            <input type="tel" value={trackPhone} onChange={e => setTrackPhone(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && trackOrder()} placeholder="024 000 0000"
-              className="flex-1 h-12 px-4 bg-white border border-[#e8e4df] rounded-xl text-[13px] focus:outline-none focus:border-[#1a1a1a] transition" />
-            <button onClick={trackOrder} disabled={tracking}
-              className="h-12 px-6 bg-[#1a1a1a] text-white rounded-xl text-[12.5px] font-semibold press hover:bg-[#333] transition disabled:opacity-50 flex items-center gap-2">
-              {tracking ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Search'}
+      {/* ══════ TRACK ══════ */}
+      {pg==='track' && (
+        <div style={{ ...S.narrow, padding:'32px 20px 60px' }}>
+          <h1 style={{ fontFamily:'var(--serif)', fontSize:28, fontWeight:400, marginBottom:8 }}>Track Order</h1>
+          <p style={{ fontSize:13, color:'#888', marginBottom:28 }}>Enter your phone number to view your orders.</p>
+          <div style={{ display:'flex', gap:8, marginBottom:32 }}>
+            <input type="tel" value={tPhone} onChange={e=>setTPhone(e.target.value)} onKeyDown={e=>e.key==='Enter'&&track()} placeholder="024 000 0000" style={{ flex:1, height:44, padding:'0 14px', borderRadius:2 }} />
+            <button onClick={track} disabled={tracking} className="btn btn-dark" style={{ padding:'0 20px', borderRadius:2, flexShrink:0 }}>
+              {tracking ? '…' : 'Search'}
             </button>
           </div>
-          {tracked && trackOrders.length === 0 && (
-            <div className="text-center py-12">
-              <div className="text-3xl mb-3 text-[#e8e4df]">◇</div>
-              <p className="text-[#a89d93] text-sm">No orders found for this number.</p>
-            </div>
-          )}
-          <div className="space-y-3">
-            {trackOrders.map(o => (
-              <div key={o.id} className="bg-white rounded-2xl border border-[#e8e4df] p-4 fade-up">
-                <div className="flex justify-between items-start mb-2">
+          {tracked && tOrders.length===0 && <p style={{ textAlign:'center', color:'#bbb', fontSize:13, padding:'40px 0' }}>No orders found.</p>}
+          <div style={{ display:'flex', flexDirection:'column', gap:1 }}>
+            {tOrders.map(o=>(
+              <div key={o.id} className="anim-up" style={{ padding:'16px 0', borderBottom:'1px solid #e2e2e2' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:6 }}>
                   <div>
-                    <div className="text-[10px] text-[#a89d93] font-mono mb-0.5">{o.order_no}</div>
-                    <div className="text-base font-semibold text-[#1a1a1a]">{money(o.total)}</div>
+                    <div style={{ fontSize:10, letterSpacing:'.06em', color:'#aaa', marginBottom:2 }}>{o.order_no}</div>
+                    <div style={{ fontSize:15, fontWeight:500 }}>{ghs(o.total)}</div>
                   </div>
-                  <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${statusColor(o.status)}`}>{o.status}</span>
+                  <span className={statusBadge(o.status)}>{o.status}</span>
                 </div>
-                {o.items && (
-                  <p className="text-[11.5px] text-[#8a7d72] mb-2">
-                    {(typeof o.items === 'string' ? JSON.parse(o.items) : o.items).map(i => `${i.qty}× ${i.name}`).join(' · ')}
-                  </p>
-                )}
-                <div className="text-[11px] text-[#c8bfb4]">{new Date(o.date || o.created_at).toLocaleString('en-GH')}</div>
+                {o.items && <p style={{ fontSize:11, color:'#888' }}>{(typeof o.items==='string'?JSON.parse(o.items):o.items).map(i=>`${i.qty}× ${i.name}`).join(' · ')}</p>}
+                <div style={{ fontSize:11, color:'#bbb', marginTop:4 }}>{new Date(o.date||o.created_at).toLocaleString('en-GH')}</div>
               </div>
             ))}
           </div>
-        </main>
+        </div>
       )}
 
-      {/* ═══════════════ FOOTER ═══════════════ */}
-      <footer className="bg-[#1a1a1a] mt-16 mb-20 md:mb-0">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
-          <div className="flex flex-col md:flex-row justify-between gap-8 mb-8">
-            <div className="max-w-xs">
-              <div className="text-white font-semibold text-lg mb-2" style={{fontFamily:'var(--font-display)'}}>Esterea Home</div>
-              <p className="text-[12px] text-[#5a5048] leading-relaxed">Premium home decor and furnishings, curated for Ghanaian homes. Quality you can trust.</p>
-            </div>
-            <div className="grid grid-cols-2 gap-8 text-[12px]">
-              <div>
-                <div className="text-[10px] text-[#5a5048] uppercase tracking-widest mb-3">Shop</div>
-                <div className="space-y-2">
-                  <button onClick={() => go('shop','/shop')} className="block text-[#8a7d72] hover:text-white transition">All Products</button>
-                  <button onClick={() => go('track','/track')} className="block text-[#8a7d72] hover:text-white transition">Track Order</button>
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] text-[#5a5048] uppercase tracking-widest mb-3">Contact</div>
-                <div className="space-y-2">
-                  <a href={`tel:${SHOP.phone.replace(/\s/g,'')}`} className="flex items-center gap-1.5 text-[#8a7d72] hover:text-white transition">{Icons.phone} {SHOP.phone}</a>
-                  <a href={`https://wa.me/${SHOP.wa}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-[#4ade80] hover:text-[#86efac] transition">{Icons.wa} WhatsApp</a>
-                  <span className="block text-[#5a5048]">{SHOP.address}</span>
-                </div>
-              </div>
-            </div>
+      {/* ══════ FOOTER ══════ */}
+      <footer style={{ background:'#111', color:'rgba(255,255,255,.5)', marginTop:40 }}>
+        <div style={{ ...S.page, display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:32, padding:'40px 20px 28px' }}>
+          <div>
+            <div style={{ fontFamily:'var(--serif)', fontSize:18, color:'#fff', marginBottom:10 }}>Esterea Home</div>
+            <p style={{ fontSize:11, lineHeight:1.7 }}>Premium home decor & furnishings for Ghanaian homes.</p>
           </div>
-          <div className="border-t border-[#2a2520] pt-5 flex flex-col sm:flex-row justify-between items-center gap-2">
-            <p className="text-[11px] text-[#3a3330]">&copy; {new Date().getFullYear()} Esterea Home. All rights reserved.</p>
-            <p className="text-[11px] text-[#3a3330]">Accra, Ghana</p>
+          <div>
+            <div style={{ fontSize:10, letterSpacing:'.1em', textTransform:'uppercase', marginBottom:12, color:'rgba(255,255,255,.25)' }}>Links</div>
+            {[['Shop','shop','/shop'],['Track Order','track','/track']].map(([l,p,h])=>(
+              <button key={p} onClick={()=>go(p,h)} style={{ display:'block', background:'none', border:'none', cursor:'pointer', fontSize:12, color:'rgba(255,255,255,.5)', marginBottom:8, textAlign:'left', padding:0 }}>{l}</button>
+            ))}
           </div>
+          <div>
+            <div style={{ fontSize:10, letterSpacing:'.1em', textTransform:'uppercase', marginBottom:12, color:'rgba(255,255,255,.25)' }}>Contact</div>
+            <a href={`tel:${PHONE}`} style={{ display:'block', fontSize:12, color:'rgba(255,255,255,.5)', marginBottom:8, textDecoration:'none' }}>{PHONE}</a>
+            <a href={`https://wa.me/${WA}`} target="_blank" rel="noreferrer" style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'#4cde80', textDecoration:'none' }}>{Ico.wa} WhatsApp</a>
+          </div>
+        </div>
+        <div style={{ borderTop:'1px solid rgba(255,255,255,.08)', padding:'16px 20px', ...S.page }}>
+          <p style={{ fontSize:11 }}>© {new Date().getFullYear()} Esterea Home · Accra, Ghana</p>
         </div>
       </footer>
 
-      {/* ═══════════════ BOTTOM NAV ═══════════════ */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-[#e8e4df]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div className="flex justify-around h-[58px] items-center px-2">
-          {[
-            ['Home','home','/',Icons.home],
-            ['Shop','shop','/shop',Icons.grid],
-            ['Cart','cart','/cart',Icons.cart],
-            ['Track','track','/track',Icons.track],
-          ].map(([l,p,h,ic]) => (
-            <button key={p} onClick={() => go(p,h)}
-              className={`flex flex-col items-center gap-1 relative transition-colors ${page===p ? 'text-[#1a1a1a]' : 'text-[#c8bfb4]'}`}>
-              <span className="relative">
-                {ic}
-                {p==='cart' && cc>0 && <span className="absolute -top-1.5 -right-2 w-4 h-4 bg-[#1a1a1a] text-white text-[8px] font-bold rounded-full flex items-center justify-center">{cc}</span>}
-              </span>
-              <span className={`text-[9px] leading-none ${page===p ? 'font-semibold' : 'font-medium'}`}>{l}</span>
-              {page===p && <span className="absolute -top-[1px] left-1/2 -translate-x-1/2 w-5 h-[2px] bg-[#1a1a1a] rounded-full" />}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* ══════ BOTTOM NAV (mobile) ══════ */}
+      <nav style={{ position:'fixed', bottom:0, left:0, right:0, background:'rgba(255,255,255,.97)', borderTop:'1px solid #e2e2e2', zIndex:50, display:'flex', justifyContent:'space-around', padding:'0 0 env(safe-area-inset-bottom)', height:58 }}>
+        {[['Home','home','/',Ico.home],['Shop','shop','/shop',Ico.grid],['Cart','cart','/cart',Ico.cart],['Track','track','/track',Ico.pin]].map(([l,p,h,ic])=>(
+          <button key={p} onClick={()=>go(p,h)} style={{ flex:1, background:'none', border:'none', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3, color:pg===p?'#111':'#bbb', transition:'color .15s', position:'relative' }}>
+            <span style={{ position:'relative' }}>
+              {ic}
+              {p==='cart' && cc>0 && <span style={{ position:'absolute', top:-4, right:-6, width:14, height:14, background:'#111', color:'#fff', borderRadius:'50%', fontSize:8, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{cc}</span>}
+            </span>
+            <span style={{ fontSize:9, fontWeight:pg===p?600:400, letterSpacing:'.03em' }}>{l}</span>
+            {pg===p && <span style={{ position:'absolute', top:0, left:'50%', transform:'translateX(-50%)', width:20, height:2, background:'#111' }} />}
+          </button>
+        ))}
+      </nav>
     </div>
   )
 }
