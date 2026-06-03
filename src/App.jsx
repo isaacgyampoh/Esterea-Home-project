@@ -93,21 +93,41 @@ export default function App() {
   const [tracked, setTracked] = useState(false)
 
   useEffect(() => { loadData() }, [])
-  useEffect(() => { const t = setInterval(() => setHeroIdx(i => (i + 1) % Math.max(heroProducts.length, 1)), 5000); return () => clearInterval(t) }, [products])
-  useEffect(() => { const h = window.location.hash.slice(1) || '/'; const map = { '/': 'home', '/shop': 'shop', '/cart': 'cart', '/checkout': 'checkout', '/track': 'track', '/admin': 'admin' }; setPage(map[h] || 'home') }, [])
+  useEffect(() => { 
+    if (heroProducts.length === 0) return
+    const t = setInterval(() => setHeroIdx(i => (i + 1) % heroProducts.length), 5000)
+    return () => clearInterval(t)
+  }, [products.length])
+  useEffect(() => { 
+    const h = window.location.hash.slice(1) || '/'
+    const map = { '/': 'home', '/shop': 'shop', '/cart': 'cart', '/checkout': 'checkout', '/track': 'track', '/admin': 'admin', '/success': 'success' }
+    setPage(map[h] || 'home')
+    const onHash = () => {
+      const h2 = window.location.hash.slice(1) || '/'
+      setPage(map[h2] || 'home')
+    }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
 
   // Admin panel
   if (page === 'admin' || window.location.hash === '#/admin') return <Admin />
 
   async function loadData() {
-    const [{ data: p }, { data: pr }] = await Promise.all([
-      supabase.from('products').select('*').eq('visible', true).order('name'),
-      supabase.from('promos').select('*').gte('end_date', new Date().toISOString()),
-    ])
-    setProducts(p || [])
-    setPromos(pr || [])
-    const cats = [...new Set((p || []).map(x => x.category).filter(Boolean))]
-    setCategories(['All', ...cats])
+    try {
+      const [{ data: p, error: e1 }, { data: pr, error: e2 }] = await Promise.all([
+        supabase.from('products').select('*').eq('visible', true).order('name'),
+        supabase.from('promos').select('*').gte('end_date', new Date().toISOString()),
+      ])
+      if (e1) console.error('Products error:', e1.message)
+      if (e2) console.error('Promos error:', e2.message)
+      setProducts(p || [])
+      setPromos(pr || [])
+      const cats = [...new Set((p || []).map(x => x.category).filter(Boolean))]
+      setCategories(['All', ...cats])
+    } catch (e) {
+      console.error('Load error:', e)
+    }
     setLoading(false)
   }
 
