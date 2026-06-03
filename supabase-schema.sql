@@ -1,4 +1,4 @@
--- ESTEREA HOME — Full Database Schema
+-- ESTEREA HOME — Database Schema
 -- Run in Supabase SQL Editor
 
 -- Products
@@ -28,7 +28,7 @@ CREATE TABLE promos (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- WhatsApp / Web Orders
+-- Orders (web + WhatsApp)
 CREATE TABLE whatsapp_orders (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   order_no TEXT NOT NULL,
@@ -42,18 +42,15 @@ CREATE TABLE whatsapp_orders (
   address TEXT DEFAULT '',
   notes TEXT DEFAULT '',
   status TEXT DEFAULT 'Pending',
-  ussd_code INT,
   paystack_ref TEXT DEFAULT '',
   paid_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now(),
-  -- Delivery tracking
   dispatch_method TEXT DEFAULT '',
   dispatch_rider TEXT DEFAULT '',
   dispatch_contact TEXT DEFAULT '',
   dispatched_at TIMESTAMPTZ,
   delivered_at TIMESTAMPTZ,
-  delivery_notes TEXT DEFAULT '',
-  qr_code TEXT DEFAULT ''
+  delivery_notes TEXT DEFAULT ''
 );
 
 -- POS Sales
@@ -81,24 +78,19 @@ CREATE TABLE expenses (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- USSD Sessions
-CREATE TABLE ussd_sessions (
-  session_id TEXT PRIMARY KEY,
-  order_code TEXT DEFAULT '',
-  phone TEXT DEFAULT '',
-  step TEXT DEFAULT '',
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Generate order number function
+-- Generate order number
 CREATE OR REPLACE FUNCTION generate_wa_order_no()
 RETURNS TEXT AS $$
-DECLARE
-  new_no TEXT;
-  prefix TEXT := 'WEB-';
 BEGIN
-  new_no := prefix || upper(to_hex(extract(epoch from now())::bigint));
-  RETURN new_no;
+  RETURN 'WEB-' || upper(to_hex(extract(epoch from now())::bigint));
+END;
+$$ LANGUAGE plpgsql;
+
+-- Stock decrement for POS
+CREATE OR REPLACE FUNCTION decrement_stock(product_id UUID, qty INT)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE products SET quantity = GREATEST(0, quantity - qty) WHERE id = product_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -108,34 +100,19 @@ ALTER TABLE promos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE whatsapp_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ussd_sessions ENABLE ROW LEVEL SECURITY;
 
--- Public read for products and promos
-CREATE POLICY "Public read products" ON products FOR SELECT USING (true);
-CREATE POLICY "Public read promos" ON promos FOR SELECT USING (true);
-CREATE POLICY "Public read orders" ON whatsapp_orders FOR SELECT USING (true);
-
--- Full access for service role
-CREATE POLICY "Full access products" ON products FOR ALL USING (true);
-CREATE POLICY "Full access promos" ON promos FOR ALL USING (true);
-CREATE POLICY "Full access orders" ON whatsapp_orders FOR ALL USING (true);
-CREATE POLICY "Full access sales" ON sales FOR ALL USING (true);
-CREATE POLICY "Full access expenses" ON expenses FOR ALL USING (true);
-CREATE POLICY "Full access sessions" ON ussd_sessions FOR ALL USING (true);
+CREATE POLICY "read products" ON products FOR SELECT USING (true);
+CREATE POLICY "all products" ON products FOR ALL USING (true);
+CREATE POLICY "read promos" ON promos FOR SELECT USING (true);
+CREATE POLICY "all promos" ON promos FOR ALL USING (true);
+CREATE POLICY "read orders" ON whatsapp_orders FOR SELECT USING (true);
+CREATE POLICY "all orders" ON whatsapp_orders FOR ALL USING (true);
+CREATE POLICY "all sales" ON sales FOR ALL USING (true);
+CREATE POLICY "all expenses" ON expenses FOR ALL USING (true);
 
 -- Indexes
 CREATE INDEX idx_products_category ON products(category);
-CREATE INDEX idx_products_visible ON products(visible);
 CREATE INDEX idx_orders_status ON whatsapp_orders(status);
 CREATE INDEX idx_orders_date ON whatsapp_orders(date DESC);
 CREATE INDEX idx_orders_phone ON whatsapp_orders(customer_phone);
 CREATE INDEX idx_sales_date ON sales(date DESC);
-CREATE INDEX idx_expenses_date ON expenses(date DESC);
-
--- Stock decrement function for POS
-CREATE OR REPLACE FUNCTION decrement_stock(product_id UUID, qty INT)
-RETURNS VOID AS $$
-BEGIN
-  UPDATE products SET quantity = GREATEST(0, quantity - qty) WHERE id = product_id;
-END;
-$$ LANGUAGE plpgsql;
