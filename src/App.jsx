@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import Admin from './Admin.jsx'
 
 // ============ CONFIG (update with real values) ============
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://PLACEHOLDER.supabase.co'
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://tgdtjfquwbtvfsdnvvgm.supabase.co'
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 const PAYSTACK_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || ''
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON)
