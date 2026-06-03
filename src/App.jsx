@@ -2,10 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import Admin from './Admin.jsx'
 
-// ============ CONFIG (update with real values) ============
+// ============ CONFIG ============
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://tgdtjfquwbtvfsdnvvgm.supabase.co'
-const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-const PAYSTACK_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || ''
+const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnZHRqZnF1d2J0dmZzZG52dmdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NTM4MjUsImV4cCI6MjA5NjAyOTgyNX0.uXUkodx29_LQNU8pkpbxNnYGFgBYmoFTJHtxVWWAt8E'
+const PAYSTACK_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_live_e77125e62b94f8222c402f584769d28fe505c92b'
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON)
 
 const SHOP = {
