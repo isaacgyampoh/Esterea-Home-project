@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import './admin.css'
 
 const SUPABASE_URL  = 'https://tgdtjfquwbtvfsdnvvgm.supabase.co'
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnZHRqZnF1d2J0dmZzZG52dmdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NTM4MjUsImV4cCI6MjA5NjAyOTgyNX0.uXUkodx29_LQNU8pkpbxNnYGFgBYmoFTJHtxVWWAt8E'
@@ -11,7 +12,7 @@ const today = () => new Date().toISOString().slice(0,10)
 const fmt = d => { try { return new Date(d).toLocaleString('en-GH',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) } catch { return d } }
 const fmtDate = d => { try { return new Date(d).toLocaleDateString('en-GH',{day:'numeric',month:'short',year:'numeric'}) } catch { return d } }
 
-/* ── CLOUDINARY ── */
+/* ── Upload ── */
 async function uploadImage(file, onProg) {
   const fd = new FormData()
   fd.append('file',file); fd.append('upload_preset',PRESET); fd.append('folder','esterea')
@@ -19,85 +20,76 @@ async function uploadImage(file, onProg) {
     const xhr = new XMLHttpRequest()
     xhr.open('POST',`https://api.cloudinary.com/v1_1/${CLOUD}/image/upload`)
     xhr.upload.onprogress = e => e.lengthComputable && onProg(Math.round(e.loaded/e.total*100))
-    xhr.onload = () => xhr.status===200 ? res(JSON.parse(xhr.responseText).secure_url) : rej(new Error(JSON.parse(xhr.responseText)?.error?.message||'Upload failed'))
+    xhr.onload = () => xhr.status===200 ? res(JSON.parse(xhr.responseText).secure_url) : rej(new Error('Upload failed'))
     xhr.onerror = ()=>rej(new Error('Network error'))
     xhr.send(fd)
   })
 }
 
-/* ── STYLES ── */
-const s = {
-  input: { width:'100%',height:38,padding:'0 10px',border:'1px solid #e2e2e2',fontSize:13,fontFamily:'var(--sans)',background:'#fff',color:'#222',outline:'none',borderRadius:4,boxSizing:'border-box' },
-  textarea: { width:'100%',padding:'8px 10px',border:'1px solid #e2e2e2',fontSize:13,fontFamily:'var(--sans)',background:'#fff',color:'#222',outline:'none',borderRadius:4,resize:'vertical',boxSizing:'border-box' },
-  label: { display:'block',fontSize:11,color:'#777',marginBottom:4,fontWeight:500 },
-  btn: { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 16px',background:'#1a1a2e',color:'#fff',border:'none',cursor:'pointer',fontSize:12,fontWeight:600,borderRadius:5,fontFamily:'var(--sans)',whiteSpace:'nowrap' },
-  btnSm: { display:'inline-flex',alignItems:'center',gap:4,padding:'5px 11px',background:'#1a1a2e',color:'#fff',border:'none',cursor:'pointer',fontSize:11,fontWeight:600,borderRadius:4,fontFamily:'var(--sans)',whiteSpace:'nowrap' },
-  btnGhost: { display:'inline-flex',alignItems:'center',gap:6,padding:'7px 14px',background:'transparent',color:'#444',border:'1px solid #e2e2e2',cursor:'pointer',fontSize:12,fontWeight:500,borderRadius:5,fontFamily:'var(--sans)',whiteSpace:'nowrap' },
-  btnGhostSm: { display:'inline-flex',alignItems:'center',gap:4,padding:'4px 10px',background:'transparent',color:'#555',border:'1px solid #ddd',cursor:'pointer',fontSize:11,fontWeight:500,borderRadius:4,fontFamily:'var(--sans)',whiteSpace:'nowrap' },
-  card: { background:'#fff',border:'1px solid #ebebeb',borderRadius:8,padding:'16px 20px',marginBottom:10 },
-  th: { fontSize:11,fontWeight:600,letterSpacing:'.05em',textTransform:'uppercase',color:'#999',padding:'10px 14px',textAlign:'left',borderBottom:'1px solid #ebebeb',whiteSpace:'nowrap',background:'#fafafa' },
-  td: { fontSize:13,padding:'11px 14px',borderBottom:'1px solid #f5f5f5',verticalAlign:'middle',color:'#222' },
-  sectionTitle: { fontFamily:'var(--serif)',fontSize:22,fontWeight:400,marginBottom:4,color:'#111' },
-}
-
-/* ── BADGE ── */
-const Badge = ({status}) => {
-  const map = { Paid:'#dcfce7:#15803d', Completed:'#dcfce7:#15803d', Pending:'#fef9c3:#92400e', Cancelled:'#fee2e2:#b91c1c', Active:'#dcfce7:#15803d', Inactive:'#f3f4f6:#6b7280', Low:'#fef9c3:#92400e', Critical:'#fee2e2:#b91c1c', 'Out of Stock':'#fee2e2:#b91c1c', 'In Stock':'#dcfce7:#15803d', Voided:'#fee2e2:#b91c1c', Refunded:'#e0f2fe:#0369a1' }
-  const [bg,col] = (map[status]||'#f3f4f6:#6b7280').split(':')
-  return <span style={{ display:'inline-block',padding:'2px 8px',background:bg,color:col,borderRadius:12,fontSize:11,fontWeight:600,whiteSpace:'nowrap' }}>{status}</span>
-}
-
-/* ── FIELD HELPERS ── */
-const F = ({label,value,onChange,placeholder,type='text',required}) => (
-  <div>
-    <label style={s.label}>{label}{required&&<span style={{color:'#e53e3e'}}> *</span>}</label>
-    <input type={type} value={value||''} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
-      style={s.input} onFocus={e=>e.target.style.borderColor='#1a1a2e'} onBlur={e=>e.target.style.borderColor='#e2e2e2'} />
+/* ── Field helpers ── */
+const Field = ({label,value,onChange,placeholder,type='text',required}) => (
+  <div className="field">
+    <label>{label}{required && <span style={{color:'#ef4444'}}> *</span>}</label>
+    <input type={type} className="field-input" value={value||''} onChange={e=>onChange(e.target.value)} placeholder={placeholder||''}/>
   </div>
 )
-const N = ({label,value,onChange,step='0.01',required}) => (
-  <div>
-    <label style={s.label}>{label}{required&&<span style={{color:'#e53e3e'}}> *</span>}</label>
-    <input type="number" step={step} min="0" value={value||''} onChange={e=>onChange(Number(e.target.value))}
-      style={s.input} onFocus={e=>e.target.style.borderColor='#1a1a2e'} onBlur={e=>e.target.style.borderColor='#e2e2e2'} />
+const NumField = ({label,value,onChange,step='0.01',required}) => (
+  <div className="field">
+    <label>{label}{required && <span style={{color:'#ef4444'}}> *</span>}</label>
+    <input type="number" step={step} min="0" className="field-input" value={value||''} onChange={e=>onChange(Number(e.target.value))}/>
   </div>
 )
-const Sel = ({label,value,onChange,options,required}) => (
-  <div>
-    <label style={s.label}>{label}{required&&<span style={{color:'#e53e3e'}}> *</span>}</label>
-    <select value={value||''} onChange={e=>onChange(e.target.value)} style={{...s.input,cursor:'pointer'}}>
+const Select = ({label,value,onChange,options,required}) => (
+  <div className="field">
+    <label>{label}{required && <span style={{color:'#ef4444'}}> *</span>}</label>
+    <select className="field-select" value={value||''} onChange={e=>onChange(e.target.value)}>
       <option value="">Select…</option>
       {options.map(o=><option key={o.value||o} value={o.value||o}>{o.label||o}</option>)}
     </select>
   </div>
 )
-const TA = ({label,value,onChange,placeholder,rows=3}) => (
-  <div>
-    <label style={s.label}>{label}</label>
-    <textarea value={value||''} onChange={e=>onChange(e.target.value)} placeholder={placeholder} rows={rows}
-      style={s.textarea} onFocus={e=>e.target.style.borderColor='#1a1a2e'} onBlur={e=>e.target.style.borderColor='#e2e2e2'} />
+const TextArea = ({label,value,onChange,placeholder,rows=3}) => (
+  <div className="field">
+    <label>{label}</label>
+    <textarea className="field-textarea" rows={rows} value={value||''} onChange={e=>onChange(e.target.value)} placeholder={placeholder||''}/>
   </div>
 )
 
-/* ── MODAL ── */
-function Modal({ title, onClose, children, wide, fullscreen }) {
-  useEffect(()=>{ document.body.style.overflow='hidden'; return ()=>{ document.body.style.overflow='' } },[])
+/* ── Badge ── */
+const Badge = ({status}) => {
+  const map = {Paid:'green',Completed:'green',Pending:'amber','In Stock':'green','Low Stock':'amber',Low:'amber',Critical:'red','Out of Stock':'red',Cancelled:'red',Active:'green',Inactive:'gray',Refunded:'blue',Voided:'red'}
+  const cls = `badge badge-${map[status]||'gray'}`
+  return <span className={cls}>{status}</span>
+}
+
+/* ── Toggle ── */
+const Toggle = ({on,onToggle,label,sub}) => (
+  <div className="toggle-wrap">
+    <div><div className="toggle-label">{label}</div>{sub&&<div className="toggle-sub">{sub}</div>}</div>
+    <button type="button" className={`toggle${on?' on':''}`} onClick={onToggle}><span className="toggle-knob"/></button>
+  </div>
+)
+
+/* ── Modal ── */
+function Modal({title,onClose,children,wide,footer}) {
+  useEffect(()=>{ document.body.style.overflow='hidden'; return()=>{ document.body.style.overflow='' } },[])
   return (
-    <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:16 }} onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div style={{ background:'#fff',width:'100%',maxWidth:fullscreen?'95vw':wide?640:460,maxHeight:'92vh',display:'flex',flexDirection:'column',borderRadius:10,boxShadow:'0 25px 60px rgba(0,0,0,.25)',overflow:'hidden' }}>
-        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 20px',borderBottom:'1px solid #ebebeb',flexShrink:0,background:'#fff' }}>
-          <span style={{ fontSize:15,fontWeight:700,color:'#111' }}>{title}</span>
-          <button onClick={onClose} style={{ background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#aaa',lineHeight:1,padding:'2px 6px' }}>✕</button>
+    <div className="modal-overlay" onClick={e=>e.target.classList.contains('modal-overlay')&&onClose()}>
+      <div className="modal-box" style={{maxWidth:wide?680:480}}>
+        <div className="modal-header">
+          <span className="modal-title">{title}</span>
+          <button className="modal-close" onClick={onClose}>✕</button>
         </div>
-        <div style={{ overflowY:'auto',padding:20,flex:1 }}>{children}</div>
+        <div className="modal-body">{children}</div>
+        {footer && <div className="modal-footer">{footer}</div>}
       </div>
     </div>
   )
 }
 
-/* ── IMAGE UPLOADER ── */
-function ImgUpload({ value, onChange }) {
-  const [prog,setProg]=useState(0), [busy,setBusy]=useState(false), [err,setErr]=useState(''), [drag,setDrag]=useState(false)
+/* ── Image Uploader ── */
+function ImgUpload({value,onChange}) {
+  const [prog,setProg]=useState(0),[busy,setBusy]=useState(false),[err,setErr]=useState(''),[drag,setDrag]=useState(false)
   const ref=useRef()
   async function handle(file) {
     if(!file||!file.type.startsWith('image/')) { setErr('Select an image file'); return }
@@ -107,65 +99,84 @@ function ImgUpload({ value, onChange }) {
     setBusy(false); setProg(0)
   }
   return (
-    <div>
-      <label style={s.label}>Product Image</label>
-      {value && !busy && (
-        <div style={{ position:'relative',height:120,background:'#f5f5f3',marginBottom:8,overflow:'hidden',borderRadius:6 }}>
-          <img src={cdn(value,400)} alt="" style={{ width:'100%',height:'100%',objectFit:'cover' }} />
-          <div style={{ position:'absolute',inset:0,background:'rgba(0,0,0,.4)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,opacity:0,transition:'opacity .15s' }}
+    <div className="field">
+      <label>Product Image</label>
+      {value&&!busy&&(
+        <div style={{position:'relative',height:130,background:'#f4f6fb',marginBottom:8,overflow:'hidden',borderRadius:12}}>
+          <img src={cdn(value,400)} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+          <div style={{position:'absolute',inset:0,background:'rgba(13,27,62,.5)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,opacity:0,transition:'opacity .15s'}}
             onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=0}>
-            <button type="button" onClick={()=>ref.current?.click()} style={{...s.btnSm}}>Change</button>
-            <button type="button" onClick={()=>onChange('')} style={{...s.btnGhostSm,color:'#fff',borderColor:'rgba(255,255,255,.4)'}}>Remove</button>
+            <button type="button" className="btn-primary btn-sm" onClick={()=>ref.current?.click()}>Change</button>
+            <button type="button" className="btn-secondary btn-sm" style={{color:'#fff',borderColor:'rgba(255,255,255,.3)',background:'transparent'}} onClick={()=>onChange('')}>Remove</button>
           </div>
         </div>
       )}
-      {!value && (
+      {!value&&(
         <div onClick={()=>!busy&&ref.current?.click()}
           onDragOver={e=>{e.preventDefault();setDrag(true)}} onDragLeave={()=>setDrag(false)}
           onDrop={e=>{e.preventDefault();setDrag(false);handle(e.dataTransfer.files[0])}}
-          style={{ height:80,border:`1.5px dashed ${drag?'#1a1a2e':'#ccc'}`,background:drag?'#f0f4ff':'#fafafa',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',marginBottom:8,borderRadius:6,transition:'all .15s' }}>
+          style={{height:90,border:`2px dashed ${drag?'#3b82f6':'#ddd'}`,background:drag?'#eff6ff':'#f4f6fb',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:12,marginBottom:8,transition:'all .15s'}}>
           {busy
-            ? <div style={{textAlign:'center'}}><div style={{fontSize:12,color:'#888',marginBottom:4}}>Uploading {prog}%</div><div style={{width:120,height:2,background:'#e2e2e2',borderRadius:2}}><div style={{height:'100%',background:'#1a1a2e',width:`${prog}%`,borderRadius:2,transition:'width .2s'}}/></div></div>
-            : <><div style={{fontSize:12,color:'#888'}}>Drop image or click to upload</div><div style={{fontSize:11,color:'#ccc',marginTop:2}}>JPG / PNG / WebP · max 10 MB</div></>
+            ? <div style={{textAlign:'center'}}><div style={{fontSize:12,color:'#888',marginBottom:6}}>Uploading {prog}%</div><div style={{width:120,height:3,background:'#e2e2e2',borderRadius:2}}><div style={{height:'100%',background:'#3b82f6',width:`${prog}%`,transition:'width .2s',borderRadius:2}}/></div></div>
+            : <><div style={{fontSize:13,color:'#888',fontWeight:500}}>Drop image or click to upload</div><div style={{fontSize:11,color:'#bbb',marginTop:3}}>JPG / PNG / WebP · max 10 MB</div></>
           }
         </div>
       )}
-      {value && !busy && <button type="button" onClick={()=>ref.current?.click()} style={{background:'none',border:'none',cursor:'pointer',fontSize:11,color:'#999',marginBottom:6}}>↑ Upload different image</button>}
-      <input value={value||''} onChange={e=>onChange(e.target.value)} placeholder="Or paste Cloudinary URL…" style={{...s.input,height:34,fontSize:12}} />
-      {err && <p style={{fontSize:11,color:'#e53e3e',marginTop:4}}>{err}</p>}
+      {value&&!busy&&<button type="button" style={{background:'none',border:'none',cursor:'pointer',fontSize:11,color:'#aaa',marginBottom:6}} onClick={()=>ref.current?.click()}>↑ Upload different image</button>}
+      <input className="field-input" value={value||''} onChange={e=>onChange(e.target.value)} placeholder="Or paste Cloudinary URL…" style={{height:34,fontSize:12}}/>
+      {err&&<p style={{fontSize:11,color:'#ef4444',marginTop:4}}>{err}</p>}
       <input ref={ref} type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files[0];if(f)handle(f);e.target.value=''}}/>
     </div>
   )
 }
 
-/* ══════════════════════════════════
-   NAV ITEMS
-══════════════════════════════════ */
-const NAV = [
-  { id:'dashboard',  label:'Dashboard',       icon:'📊' },
-  { id:'pos',        label:'POS',             icon:'🖥️' },
-  { id:'invoices',   label:'Invoices',        icon:'📋' },
-  { id:'receipts',   label:'Receipts',        icon:'🧾' },
-  { id:'refunds',    label:'Refunds',         icon:'↩️' },
-  { id:'products',   label:'Products',        icon:'📦' },
-  { id:'promos',     label:'Promos & Bundles',icon:'🏷️' },
-  { id:'restock',    label:'Restock',         icon:'📥' },
-  { id:'stock',      label:'Stock & Adjust',  icon:'📐' },
-  { id:'customers',  label:'Customers',       icon:'👥' },
-  { id:'expenses',   label:'Expenses',        icon:'💸' },
-  { id:'reports',    label:'Reports',         icon:'📈' },
-  { id:'staff',      label:'Staff',           icon:'👤' },
+/* ── Stat Card ── */
+const StatCard = ({label,value,sub,icon,variant='default'}) => (
+  <div className={`stat-card ${variant}`}>
+    {icon&&<div className="stat-card-icon">{icon}</div>}
+    <div className="stat-card-label">{label}</div>
+    <div className="stat-card-value">{value}</div>
+    {sub&&<div className="stat-card-sub">{sub}</div>}
+  </div>
+)
+
+const Spinner = () => <div style={{textAlign:'center',padding:48,color:'#aaa',fontSize:13,fontWeight:500}}>Loading…</div>
+const Empty = ({text='No data.'}) => <div style={{textAlign:'center',padding:'48px 20px',color:'#bbb',fontSize:13}}><div style={{fontSize:32,marginBottom:8}}>◇</div>{text}</div>
+
+/* ════════════════════
+   NAV CONFIG
+════════════════════ */
+const NAV_SECTIONS = [
+  { label:'Sales', items:[
+    {id:'dashboard',label:'Dashboard',icon:'📊'},
+    {id:'pos',label:'POS',icon:'🖥️'},
+    {id:'invoices',label:'Invoices',icon:'📋'},
+    {id:'receipts',label:'Receipts',icon:'🧾'},
+    {id:'refunds',label:'Refunds',icon:'↩️'},
+  ]},
+  { label:'Inventory', items:[
+    {id:'products',label:'Products',icon:'📦'},
+    {id:'promos',label:'Promos & Bundles',icon:'🏷️'},
+    {id:'restock',label:'Restock',icon:'📥'},
+    {id:'stock',label:'Stock & Adjust',icon:'📐'},
+  ]},
+  { label:'Business', items:[
+    {id:'customers',label:'Customers',icon:'👥'},
+    {id:'expenses',label:'Expenses',icon:'💸'},
+    {id:'reports',label:'Reports',icon:'📈'},
+    {id:'staff',label:'Staff',icon:'👤'},
+  ]},
 ]
 
-/* ══════════════════════════════════
-   MAIN ADMIN COMPONENT
-══════════════════════════════════ */
+/* ════════════════════
+   MAIN ADMIN
+════════════════════ */
 export default function Admin() {
-  const [authed, setAuthed] = useState(false)
-  const [pass, setPass]     = useState('')
-  const [err, setErr]       = useState(false)
-  const [tab, setTab]       = useState('dashboard')
-  const [sideOpen, setSideOpen] = useState(false)
+  const [authed,setAuthed]=useState(false)
+  const [pass,setPass]=useState('')
+  const [err,setErr]=useState(false)
+  const [tab,setTab]=useState('dashboard')
+  const [sideOpen,setSideOpen]=useState(false)
 
   useEffect(()=>{ if(sessionStorage.getItem('esterea_admin')==='yes') setAuthed(true) },[])
 
@@ -175,129 +186,131 @@ export default function Admin() {
   }
   function logout() { sessionStorage.removeItem('esterea_admin'); window.location.hash='/'; window.location.reload() }
 
-  if (!authed) return (
-    <div style={{ minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f0f2f5',fontFamily:'var(--sans)' }}>
-      <div style={{ width:340,background:'#fff',borderRadius:12,padding:32,boxShadow:'0 4px 24px rgba(0,0,0,.08)' }}>
-        <div style={{ textAlign:'center',marginBottom:28 }}>
-          <div style={{ width:48,height:48,background:'#1a1a2e',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 12px',fontFamily:'var(--serif)',fontSize:24,color:'#fff' }}>E</div>
-          <div style={{ fontFamily:'var(--serif)',fontSize:22,color:'#111',marginBottom:2 }}>Esterea Home</div>
-          <div style={{ fontSize:12,color:'#aaa' }}>Admin Panel</div>
+  const allItems = NAV_SECTIONS.flatMap(s=>s.items)
+  const activeItem = allItems.find(i=>i.id===tab)
+
+  if(!authed) return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#0d1b3e 0%,#1e2f5a 100%)'}}>
+      <div style={{width:360,background:'#fff',borderRadius:24,padding:36,boxShadow:'0 30px 80px rgba(13,27,62,.35)'}}>
+        <div style={{textAlign:'center',marginBottom:28}}>
+          <div style={{width:52,height:52,background:'linear-gradient(135deg,#2563eb,#3b82f6)',borderRadius:14,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 14px',fontFamily:'var(--serif)',fontSize:26,color:'#fff',boxShadow:'0 6px 20px rgba(59,130,246,.4)'}}>E</div>
+          <div style={{fontSize:20,fontWeight:800,color:'#0d1b3e',marginBottom:2}}>Esterea Home</div>
+          <div style={{fontSize:12,color:'#aaa',letterSpacing:'.03em'}}>Admin Panel</div>
         </div>
-        <input type="password" value={pass} onChange={e=>{setPass(e.target.value);setErr(false)}} onKeyDown={e=>e.key==='Enter'&&login()}
-          placeholder="Password" autoFocus style={{...s.input,marginBottom:8,height:44,borderColor:err?'#e53e3e':'#e2e2e2',borderRadius:6}} />
-        {err && <p style={{fontSize:11,color:'#e53e3e',marginBottom:8,textAlign:'center'}}>Incorrect password</p>}
-        <button onClick={login} style={{...s.btn,width:'100%',justifyContent:'center',padding:'12px 0',borderRadius:6,fontSize:13}}>Sign in</button>
+        <div className="field">
+          <label>Password</label>
+          <input type="password" className="field-input" value={pass} onChange={e=>{setPass(e.target.value);setErr(false)}} onKeyDown={e=>e.key==='Enter'&&login()} placeholder="Enter password" autoFocus style={{borderColor:err?'#ef4444':undefined}}/>
+          {err&&<div style={{fontSize:11,color:'#ef4444',marginTop:4}}>Incorrect password</div>}
+        </div>
+        <button className="btn-primary" style={{width:'100%',justifyContent:'center',padding:'13px 0',fontSize:14,borderRadius:12,marginTop:4}} onClick={login}>Sign in</button>
       </div>
     </div>
   )
 
   return (
-    <div style={{ minHeight:'100vh',display:'flex',fontFamily:'var(--sans)',background:'#f0f2f5' }}>
-      {sideOpen && <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,.35)',zIndex:99 }} onClick={()=>setSideOpen(false)} />}
+    <div className="admin-root">
+      {sideOpen&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.35)',zIndex:99}} onClick={()=>setSideOpen(false)}/>}
 
-      {/* ── SIDEBAR ── */}
-      <aside style={{ width:220,background:'#1a1a2e',flexShrink:0,display:'flex',flexDirection:'column',position:'fixed',top:0,bottom:0,left:0,zIndex:100,transform:sideOpen?'translateX(0)':'translateX(-100%)',transition:'transform .25s ease' }}>
-        <div style={{ padding:'18px 16px 14px',borderBottom:'1px solid rgba(255,255,255,.08)' }}>
-          <div style={{ fontFamily:'var(--serif)',fontSize:17,color:'#fff',lineHeight:1.2 }}>Esterea Home</div>
-          <div style={{ fontSize:10,color:'rgba(255,255,255,.3)',marginTop:3,letterSpacing:'.08em',textTransform:'uppercase' }}>Admin</div>
+      {/* SIDEBAR */}
+      <aside className="admin-sidebar" style={{transform:sideOpen?'translateX(0)':undefined}}>
+        <div className="sidebar-logo">
+          <div className="sidebar-logo-mark">E</div>
+          <div className="sidebar-logo-name">Esterea Home</div>
+          <div className="sidebar-logo-sub">Management</div>
         </div>
-        <nav style={{ flex:1,overflowY:'auto',padding:'8px 8px' }}>
-          {NAV.map(({id,label,icon})=>(
-            <button key={id} onClick={()=>{setTab(id);setSideOpen(false)}}
-              style={{ width:'100%',background:tab===id?'rgba(255,255,255,.12)':'transparent',border:'none',cursor:'pointer',padding:'9px 12px',textAlign:'left',fontSize:12,fontWeight:tab===id?600:400,color:tab===id?'#fff':'rgba(255,255,255,.5)',letterSpacing:'.01em',marginBottom:1,transition:'all .15s',fontFamily:'var(--sans)',borderRadius:6,display:'flex',alignItems:'center',gap:9 }}>
-              <span style={{fontSize:14}}>{icon}</span>{label}
-            </button>
+        <nav className="sidebar-nav">
+          {NAV_SECTIONS.map(section=>(
+            <div key={section.label}>
+              <div className="sidebar-section-label">{section.label}</div>
+              {section.items.map(item=>(
+                <button key={item.id} className={`nav-item${tab===item.id?' active':''}`}
+                  onClick={()=>{setTab(item.id);setSideOpen(false)}}>
+                  <span className="nav-icon">{item.icon}</span>
+                  {item.label}
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
-        <div style={{ padding:'10px 8px',borderTop:'1px solid rgba(255,255,255,.08)' }}>
-          <a href="/" target="_blank" rel="noreferrer" style={{ display:'flex',alignItems:'center',gap:8,fontSize:11,color:'rgba(255,255,255,.3)',textDecoration:'none',padding:'8px 12px',borderRadius:6,marginBottom:2 }}>🏠 View Store</a>
-          <button onClick={logout} style={{ width:'100%',background:'none',border:'none',cursor:'pointer',fontSize:11,color:'rgba(255,255,255,.3)',padding:'8px 12px',textAlign:'left',fontFamily:'var(--sans)',borderRadius:6,display:'flex',alignItems:'center',gap:8 }}>↗ Sign out</button>
+        <div className="sidebar-footer">
+          <a href="/" target="_blank" rel="noreferrer" className="sidebar-footer-btn" style={{textDecoration:'none'}}>
+            <span>🏠</span> View Store
+          </a>
+          <button className="sidebar-footer-btn" onClick={logout}>
+            <span>↗</span> Sign out
+          </button>
         </div>
       </aside>
 
-      {/* ── MAIN CONTENT ── */}
-      <div style={{ flex:1,minWidth:0,display:'flex',flexDirection:'column' }}>
-        <div style={{ height:52,background:'#fff',borderBottom:'1px solid #ebebeb',display:'flex',alignItems:'center',gap:12,padding:'0 20px',position:'sticky',top:0,zIndex:50,boxShadow:'0 1px 3px rgba(0,0,0,.04)' }}>
-          <button onClick={()=>setSideOpen(o=>!o)} style={{ background:'none',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',gap:4.5,padding:6 }}>
-            <span style={{ display:'block',width:18,height:2,background:'#555',borderRadius:1 }}/>
-            <span style={{ display:'block',width:14,height:2,background:'#555',borderRadius:1 }}/>
-            <span style={{ display:'block',width:18,height:2,background:'#555',borderRadius:1 }}/>
+      {/* MAIN */}
+      <div className="admin-main admin-content-wrap">
+        <div className="admin-topbar">
+          <button className="topbar-hamburger" onClick={()=>setSideOpen(o=>!o)}>
+            <span style={{width:18}}/><span style={{width:14}}/><span style={{width:18}}/>
           </button>
-          <span style={{ fontSize:14,fontWeight:700,color:'#111' }}>{NAV.find(n=>n.id===tab)?.label}</span>
-          <span style={{ fontSize:12,color:'#aaa',marginLeft:'auto' }}>{new Date().toLocaleDateString('en-GH',{weekday:'short',day:'numeric',month:'short'})}</span>
+          <span className="topbar-title">{activeItem?.label}</span>
+          <span className="topbar-date">{new Date().toLocaleDateString('en-GH',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</span>
         </div>
-        <div style={{ flex:1,overflowY:'auto',padding:20 }}>
-          {tab==='dashboard'  && <Dashboard />}
-          {tab==='pos'        && <POS />}
-          {tab==='invoices'   && <Invoices />}
-          {tab==='receipts'   && <Receipts />}
-          {tab==='refunds'    && <Refunds />}
-          {tab==='products'   && <Products />}
-          {tab==='promos'     && <Promos />}
-          {tab==='restock'    && <Restock />}
-          {tab==='stock'      && <StockAdjust />}
-          {tab==='customers'  && <Customers />}
-          {tab==='expenses'   && <Expenses />}
-          {tab==='reports'    && <Reports />}
-          {tab==='staff'      && <Staff />}
+        <div className="admin-content fade-in" key={tab}>
+          {tab==='dashboard' && <Dashboard/>}
+          {tab==='pos'       && <POS/>}
+          {tab==='invoices'  && <Invoices/>}
+          {tab==='receipts'  && <Receipts/>}
+          {tab==='refunds'   && <Refunds/>}
+          {tab==='products'  && <Products/>}
+          {tab==='promos'    && <Promos/>}
+          {tab==='restock'   && <Restock/>}
+          {tab==='stock'     && <StockAdjust/>}
+          {tab==='customers' && <Customers/>}
+          {tab==='expenses'  && <Expenses/>}
+          {tab==='reports'   && <Reports/>}
+          {tab==='staff'     && <Staff/>}
         </div>
       </div>
     </div>
   )
 }
 
-/* ══════════════════════════════════
-   STAT CARD
-══════════════════════════════════ */
-function StatCard({ label, value, sub, color }) {
-  return (
-    <div style={{ background:color||'#1a1a2e',borderRadius:8,padding:'16px 20px',color:'#fff' }}>
-      <div style={{ fontSize:11,fontWeight:600,letterSpacing:'.06em',textTransform:'uppercase',color:'rgba(255,255,255,.5)',marginBottom:8 }}>{label}</div>
-      <div style={{ fontSize:26,fontWeight:700,lineHeight:1,marginBottom:4 }}>{value}</div>
-      {sub && <div style={{ fontSize:11,color:'rgba(255,255,255,.45)' }}>{sub}</div>}
-    </div>
-  )
-}
-
-/* ══════════════════════════════════
+/* ════════════════════
    DASHBOARD
-══════════════════════════════════ */
+════════════════════ */
 function Dashboard() {
-  const [stats, setStats] = useState(null)
+  const [stats,setStats]=useState(null)
   useEffect(()=>{ load() },[])
   async function load() {
-    const t = today()
-    const [{count:pCount},{data:sales},{data:expenses},{data:orders},{data:customers}] = await Promise.all([
+    const t=today()
+    const [{count:pCount},{data:sales},{data:expenses},{data:orders}] = await Promise.all([
       supabase.from('products').select('*',{count:'exact',head:true}),
       supabase.from('sales').select('total,profit,date').eq('voided',false),
       supabase.from('expenses').select('amount,date'),
       supabase.from('whatsapp_orders').select('total,status,date,created_at'),
-      supabase.from('customers').select('id').limit(1),
     ])
-    const s=sales||[], e=expenses||[], o=orders||[]
+    const s=sales||[],e=expenses||[],o=orders||[]
     const tSales=s.filter(x=>x.date?.startsWith(t))
     const rev=s.reduce((a,x)=>a+Number(x.total||0),0)
     const profit=s.reduce((a,x)=>a+Number(x.profit||0),0)
     const exp=e.reduce((a,x)=>a+Number(x.amount||0),0)
-    const {count:custCount}=await supabase.from('customers').select('*',{count:'exact',head:true})
-    setStats({products:pCount||0,todayRev:tSales.reduce((a,x)=>a+Number(x.total||0),0),todaySales:tSales.length,revenue:rev,profit,expenses:exp,net:profit-exp,orders:o.length,pending:o.filter(x=>x.status==='Pending').length,paid:o.filter(x=>['Paid','Completed'].includes(x.status)).length,onlineRev:o.filter(x=>['Paid','Completed'].includes(x.status)).reduce((a,x)=>a+Number(x.total||0),0),customers:custCount||0})
+    const {count:cCount}=await supabase.from('customers').select('*',{count:'exact',head:true}).catch(()=>({count:0}))
+    setStats({products:pCount||0,todayRev:tSales.reduce((a,x)=>a+Number(x.total||0),0),todaySales:tSales.length,revenue:rev,profit,expenses:exp,net:profit-exp,orders:o.length,pending:o.filter(x=>x.status==='Pending').length,paid:o.filter(x=>['Paid','Completed'].includes(x.status)).length,onlineRev:o.filter(x=>['Paid','Completed'].includes(x.status)).reduce((a,x)=>a+Number(x.total||0),0),customers:cCount||0})
   }
   if(!stats) return <Spinner/>
   return (
     <div>
-      <h1 style={s.sectionTitle}>Dashboard</h1>
-      <p style={{fontSize:12,color:'#aaa',marginBottom:20}}>{new Date().toLocaleDateString('en-GH',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:12,marginBottom:20}}>
-        <StatCard label="Today Revenue" value={ghs(stats.todayRev)} sub={`${stats.todaySales} POS sales`} />
-        <StatCard label="Total Revenue" value={ghs(stats.revenue)} sub="All time POS" color="#0f4c81" />
-        <StatCard label="Net Profit" value={ghs(stats.net)} sub="After expenses" color={stats.net>=0?'#14532d':'#7f1d1d'} />
-        <StatCard label="Expenses" value={ghs(stats.expenses)} sub="Recorded" color="#7c3aed" />
-        <StatCard label="Products" value={stats.products} sub="In catalogue" color="#0369a1" />
-        <StatCard label="Customers" value={stats.customers} sub="Registered" color="#b45309" />
-        <StatCard label="Online Orders" value={stats.orders} sub={`${stats.pending} pending`} color="#be185d" />
-        <StatCard label="Orders Paid" value={stats.paid} sub={ghs(stats.onlineRev)+' revenue'} color="#065f46" />
+      <div className="page-header">
+        <div><div className="page-title">Dashboard</div><div className="page-sub">{new Date().toLocaleDateString('en-GH',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>
+        <button className="btn-secondary" onClick={load}>↻ Refresh</button>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:12}}>
+      <div className="stat-grid">
+        <StatCard label="Today's Revenue" value={ghs(stats.todayRev)} sub={`${stats.todaySales} POS sales`} icon="💰"/>
+        <StatCard label="Total Revenue" value={ghs(stats.revenue)} sub="All time POS" icon="📈" variant="blue"/>
+        <StatCard label="Net Profit" value={ghs(stats.net)} sub="After expenses" icon="✦" variant={stats.net>=0?'green':'red'}/>
+        <StatCard label="Total Expenses" value={ghs(stats.expenses)} sub="All recorded" icon="💸" variant="purple"/>
+        <StatCard label="Products" value={stats.products} sub="In catalogue" icon="📦" variant="teal"/>
+        <StatCard label="Customers" value={stats.customers} sub="Registered" icon="👥" variant="amber"/>
+        <StatCard label="Online Orders" value={stats.orders} sub={`${stats.pending} pending`} icon="📋"/>
+        <StatCard label="Orders Paid" value={stats.paid} sub={ghs(stats.onlineRev)} icon="✓" variant="green"/>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(320px,1fr))',gap:16}}>
         <RecentOrders/>
         <LowStockWidget/>
       </div>
@@ -306,16 +319,17 @@ function Dashboard() {
 }
 function RecentOrders() {
   const [orders,setOrders]=useState([])
-  useEffect(()=>{ supabase.from('whatsapp_orders').select('order_no,customer_name,total,status,date').order('date',{ascending:false}).limit(5).then(({data})=>setOrders(data||[])) },[])
+  useEffect(()=>{ supabase.from('whatsapp_orders').select('order_no,customer_name,total,status').order('created_at',{ascending:false}).limit(6).then(({data})=>setOrders(data||[])) },[])
   return (
-    <div style={{...s.card}}>
-      <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Recent Online Orders</div>
+    <div className="panel">
+      <div className="panel-header"><span className="panel-title">Recent Online Orders</span></div>
       {orders.map(o=>(
-        <div key={o.order_no} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:'1px solid #f5f5f5'}}>
-          <div><div style={{fontSize:12,fontWeight:600}}>{o.customer_name||'Customer'}</div><div style={{fontSize:11,color:'#999'}}>{o.order_no}</div></div>
-          <div style={{textAlign:'right'}}><div style={{fontSize:12,fontWeight:700}}>{ghs(o.total)}</div><Badge status={o.status}/></div>
+        <div key={o.order_no} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
+          <div><div style={{fontSize:13,fontWeight:700}}>{o.customer_name||'Customer'}</div><div style={{fontSize:11,color:'#aaa',fontFamily:'monospace'}}>{o.order_no}</div></div>
+          <div style={{textAlign:'right',display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}><div style={{fontSize:14,fontWeight:800}}>{ghs(o.total)}</div><Badge status={o.status}/></div>
         </div>
       ))}
+      {orders.length===0&&<Empty text="No orders yet."/>}
     </div>
   )
 }
@@ -323,228 +337,14 @@ function LowStockWidget() {
   const [items,setItems]=useState([])
   useEffect(()=>{ supabase.from('products').select('name,quantity').lte('quantity',10).order('quantity').limit(8).then(({data})=>setItems(data||[])) },[])
   return (
-    <div style={{...s.card}}>
-      <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Low Stock Alert</div>
-      {items.length===0?<p style={{fontSize:12,color:'#aaa'}}>All stock levels OK</p>:items.map((p,i)=>(
-        <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:'1px solid #f5f5f5'}}>
-          <div style={{fontSize:12,fontWeight:500}}>{p.name}</div>
-          <Badge status={p.quantity===0?'Out of Stock':p.quantity<=3?'Critical':'Low'}/>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-/* ══════════════════════════════════
-   INVOICES (Online Orders)
-══════════════════════════════════ */
-function Invoices() {
-  const [orders,setOrders]=useState([])
-  const [filter,setFilter]=useState('all')
-  const [search,setSearch]=useState('')
-  const [loading,setLoading]=useState(true)
-  const [detail,setDetail]=useState(null)
-
-  useEffect(()=>{ load() },[])
-  async function load() { setLoading(true); const{data}=await supabase.from('whatsapp_orders').select('*').order('date',{ascending:false}).limit(300); setOrders(data||[]); setLoading(false) }
-  async function upd(id,status) { await supabase.from('whatsapp_orders').update({status}).eq('id',id); setOrders(os=>os.map(o=>o.id===id?{...o,status}:o)) }
-
-  const counts = ['Pending','Paid','Completed','Cancelled'].reduce((a,st)=>({...a,[st]:orders.filter(o=>o.status===st).length}),{})
-  const shown = orders.filter(o=>{
-    if(filter!=='all'&&o.status!==filter) return false
-    if(search&&!o.customer_name?.toLowerCase().includes(search.toLowerCase())&&!o.customer_phone?.includes(search)&&!o.order_no?.toLowerCase().includes(search.toLowerCase())) return false
-    return true
-  })
-
-  return (
-    <div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-        <div><h1 style={s.sectionTitle}>Invoices</h1><p style={{fontSize:12,color:'#aaa'}}>Online orders & payments</p></div>
-        <button onClick={load} style={s.btnGhost}>↻ Refresh</button>
-      </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:10,marginBottom:16}}>
-        <StatCard label="Paid" value={counts.Paid||0} sub="completed"/>
-        <StatCard label="Pending" value={counts.Pending||0} sub="awaiting payment" color="#92400e"/>
-        <StatCard label="Completed" value={counts.Completed||0} sub="delivered" color="#065f46"/>
-        <StatCard label="Cancelled" value={counts.Cancelled||0} sub="cancelled" color="#7f1d1d"/>
-      </div>
-      <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}}>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name, phone, or order #…"
-          style={{...s.input,flex:1,minWidth:200}} />
-        {[['all','All'],['Pending','Pending'],['Paid','Paid'],['Completed','Completed'],['Cancelled','Cancelled']].map(([v,l])=>(
-          <button key={v} onClick={()=>setFilter(v)} style={filter===v?s.btn:s.btnGhost}>{l}</button>
-        ))}
-      </div>
-      {loading?<Spinner/>:shown.length===0?<Empty text="No invoices."/>:shown.map(o=>{
-        const items=o.items?(typeof o.items==='string'?JSON.parse(o.items):o.items):[]
-        return (
-          <div key={o.id} style={s.card}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-              <div>
-                <div style={{fontSize:11,color:'#aaa',letterSpacing:'.04em'}}>{o.order_no}</div>
-                <div style={{fontSize:15,fontWeight:700,marginTop:2}}>{o.customer_name||'Customer'}</div>
-                <div style={{fontSize:12,color:'#888'}}>{o.customer_phone} · {fmtDate(o.date||o.created_at)}</div>
-              </div>
-              <div style={{textAlign:'right'}}>
-                <div style={{fontSize:17,fontWeight:700}}>{ghs(o.total)}</div>
-                <Badge status={o.status}/>
-              </div>
-            </div>
-            {items.length>0&&<p style={{fontSize:12,color:'#888',margin:'8px 0 4px'}}>{items.map(i=>`${i.qty}× ${i.name}`).join(' · ')}</p>}
-            {o.address&&<p style={{fontSize:11,color:'#bbb',marginBottom:8}}>{o.address}</p>}
-            <div style={{display:'flex',gap:6,marginTop:8,flexWrap:'wrap'}}>
-              {o.status==='Pending'&&<button onClick={()=>upd(o.id,'Paid')} style={s.btnSm}>Mark Paid</button>}
-              {o.status==='Paid'&&<button onClick={()=>upd(o.id,'Completed')} style={s.btnSm}>Mark Completed</button>}
-              {!['Cancelled','Completed'].includes(o.status)&&<button onClick={()=>upd(o.id,'Cancelled')} style={{...s.btnGhostSm,color:'#e53e3e',borderColor:'#fecaca'}}>Cancel</button>}
-              <button onClick={()=>setDetail(o)} style={s.btnGhostSm}>View details</button>
-            </div>
-          </div>
-        )
-      })}
-      {detail&&(
-        <Modal title={`Invoice ${detail.order_no}`} onClose={()=>setDetail(null)}>
-          {[['Customer',detail.customer_name],['Phone',detail.customer_phone],['Date',fmt(detail.date||detail.created_at)],['Address',detail.address],['Status',<Badge status={detail.status}/>],['Total',<strong>{ghs(detail.total)}</strong>],['Notes',detail.notes]].map(([k,v])=>v&&(
-            <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:'1px solid #f5f5f5',fontSize:13}}>
-              <span style={{color:'#777'}}>{k}</span><span>{v}</span>
-            </div>
-          ))}
-          <div style={{marginTop:16}}>
-            <div style={{fontSize:12,fontWeight:700,marginBottom:8}}>Items</div>
-            {(detail.items?(typeof detail.items==='string'?JSON.parse(detail.items):detail.items):[]).map((it,i)=>(
-              <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'6px 0',borderBottom:'1px solid #f5f5f5'}}>
-                <span>{it.qty}× {it.name}</span><span style={{fontWeight:600}}>{ghs(it.price*it.qty)}</span>
-              </div>
-            ))}
-          </div>
-        </Modal>
-      )}
-    </div>
-  )
-}
-
-/* ══════════════════════════════════
-   RECEIPTS (POS Sales)
-══════════════════════════════════ */
-function Receipts() {
-  const [sales,setSales]=useState([])
-  const [search,setSearch]=useState('')
-  const [loading,setLoading]=useState(true)
-  const [detail,setDetail]=useState(null)
-
-  useEffect(()=>{ load() },[])
-  async function load() { setLoading(true); const{data}=await supabase.from('sales').select('*').eq('voided',false).order('date',{ascending:false}).limit(300); setSales(data||[]); setLoading(false) }
-
-  const shown=sales.filter(s=>!search||s.receipt_no?.toLowerCase().includes(search.toLowerCase())||s.customer_name?.toLowerCase().includes(search.toLowerCase())||s.customer_phone?.includes(search))
-  const total=sales.reduce((a,s)=>a+Number(s.total||0),0)
-  const profit=sales.reduce((a,s)=>a+Number(s.profit||0),0)
-
-  return (
-    <div>
-      <h1 style={s.sectionTitle}>Receipts</h1>
-      <p style={{fontSize:12,color:'#aaa',marginBottom:16}}>{sales.length} receipts · {ghs(total)} revenue · {ghs(profit)} profit</p>
-      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search receipt, customer…" style={{...s.input,maxWidth:360,marginBottom:12}}/>
-      {loading?<Spinner/>:shown.length===0?<Empty text="No receipts."/>:shown.map(s=>{
-        const items=s.items?(typeof s.items==='string'?JSON.parse(s.items):s.items):[]
-        return (
-          <div key={s.id} style={s.card}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <div>
-                <div style={{fontSize:11,color:'#aaa',fontFamily:'monospace'}}>{s.receipt_no}</div>
-                <div style={{fontSize:15,fontWeight:700}}>{ghs(s.total)}</div>
-                <div style={{fontSize:11,color:'#888'}}>{s.payment} · Profit: <span style={{color:'#15803d',fontWeight:600}}>{ghs(s.profit)}</span></div>
-                {s.customer_name&&<div style={{fontSize:11,color:'#aaa'}}>{s.customer_name} {s.customer_phone&&`· ${s.customer_phone}`}</div>}
-              </div>
-              <div style={{textAlign:'right'}}>
-                <div style={{fontSize:11,color:'#aaa'}}>{fmtDate(s.date)}</div>
-                <button onClick={()=>setDetail(s)} style={{...s.btnGhostSm,marginTop:6}}>View</button>
-              </div>
-            </div>
-            {items.length>0&&<p style={{fontSize:11,color:'#aaa',marginTop:4}}>{items.map(i=>`${i.qty}× ${i.name}`).join(' · ')}</p>}
-          </div>
-        )
-      })}
-      {detail&&(
-        <Modal title={`Receipt ${detail.receipt_no}`} onClose={()=>setDetail(null)}>
-          <div style={{textAlign:'center',padding:'12px 0 20px'}}>
-            <div style={{fontFamily:'var(--serif)',fontSize:20,marginBottom:4}}>Esterea Home</div>
-            <div style={{fontSize:11,color:'#aaa'}}>Accra, Ghana · 0547927722</div>
-            <div style={{fontSize:11,color:'#aaa',marginTop:2}}>{fmt(detail.date)}</div>
-          </div>
-          {(detail.items?(typeof detail.items==='string'?JSON.parse(detail.items):detail.items):[]).map((it,i)=>(
-            <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'7px 0',borderBottom:'1px solid #f5f5f5'}}>
-              <span>{it.qty}× {it.name}</span><span style={{fontWeight:600}}>{ghs((it.price||0)*it.qty)}</span>
-            </div>
-          ))}
-          <div style={{display:'flex',justifyContent:'space-between',fontSize:15,fontWeight:700,marginTop:12,padding:'10px 0',borderTop:'2px solid #111'}}>
-            <span>Total</span><span>{ghs(detail.total)}</span>
-          </div>
-          <div style={{fontSize:12,color:'#888',marginTop:4}}>Payment: {detail.payment}</div>
-          {detail.customer_name&&<div style={{fontSize:12,color:'#aaa',marginTop:2}}>Customer: {detail.customer_name}</div>}
-          <div style={{textAlign:'center',fontSize:11,color:'#aaa',marginTop:16}}>Thank you for shopping with us!</div>
-        </Modal>
-      )}
-    </div>
-  )
-}
-
-/* ══════════════════════════════════
-   REFUNDS
-══════════════════════════════════ */
-function Refunds() {
-  const [refunds,setRefunds]=useState([])
-  const [loading,setLoading]=useState(true)
-  const [modal,setModal]=useState(false)
-  const [form,setForm]=useState({order_ref:'',amount:'',reason:'',payment_method:'Cash',staff_name:''})
-  const [saving,setSaving]=useState(false)
-
-  useEffect(()=>{ load() },[])
-  async function load() {
-    setLoading(true)
-    // ensure table exists gracefully
-    const{data}=await supabase.from('refunds').select('*').order('created_at',{ascending:false}).limit(200)
-    setRefunds(data||[]); setLoading(false)
-  }
-  async function save() {
-    if(!form.order_ref||!form.amount) return; setSaving(true)
-    await supabase.from('refunds').insert({...form,amount:Number(form.amount),created_at:new Date().toISOString(),status:'Refunded'})
-    setSaving(false); setModal(false); setForm({order_ref:'',amount:'',reason:'',payment_method:'Cash',staff_name:''}); load()
-  }
-
-  const total=refunds.reduce((a,r)=>a+Number(r.amount||0),0)
-  return (
-    <div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-        <div><h1 style={s.sectionTitle}>Refunds</h1><p style={{fontSize:12,color:'#aaa'}}>{refunds.length} refunds · {ghs(total)} total</p></div>
-        <button onClick={()=>setModal(true)} style={s.btn}>+ Issue Refund</button>
-      </div>
-      {modal&&(
-        <Modal title="Issue Refund" onClose={()=>setModal(false)}>
-          <div style={{display:'grid',gap:12}}>
-            <F label="Order / Receipt Ref *" value={form.order_ref} onChange={v=>setForm({...form,order_ref:v})} placeholder="e.g. POS-ABC123 or EST-XYZ" required/>
-            <N label="Refund Amount (GH₵) *" value={form.amount} onChange={v=>setForm({...form,amount:v})} required/>
-            <Sel label="Refund Method" value={form.payment_method} onChange={v=>setForm({...form,payment_method:v})} options={['Cash','MoMo','Paystack']}/>
-            <TA label="Reason" value={form.reason} onChange={v=>setForm({...form,reason:v})} placeholder="Why is this being refunded?" rows={2}/>
-            <F label="Staff Name" value={form.staff_name} onChange={v=>setForm({...form,staff_name:v})} placeholder="Who approved this refund?"/>
-            <div style={{display:'flex',gap:8,paddingTop:8}}>
-              <button onClick={save} disabled={saving||!form.order_ref||!form.amount} style={{...s.btn,flex:1,justifyContent:'center',opacity:saving?0.5:1}}>{saving?'Saving…':'Issue Refund'}</button>
-              <button onClick={()=>setModal(false)} style={{...s.btnGhost,flex:1,justifyContent:'center'}}>Cancel</button>
-            </div>
-          </div>
-        </Modal>
-      )}
-      {loading?<Spinner/>:refunds.length===0?<Empty text="No refunds issued."/>:refunds.map(r=>(
-        <div key={r.id} style={s.card}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <div>
-              <div style={{fontSize:11,color:'#aaa'}}>Ref: {r.order_ref}</div>
-              <div style={{fontSize:15,fontWeight:700,color:'#e53e3e'}}>{ghs(r.amount)}</div>
-              <div style={{fontSize:12,color:'#888'}}>{r.payment_method} {r.staff_name&&`· ${r.staff_name}`}</div>
-              {r.reason&&<div style={{fontSize:11,color:'#aaa',marginTop:2}}>{r.reason}</div>}
-            </div>
-            <div style={{textAlign:'right'}}>
-              <Badge status="Refunded"/>
-              <div style={{fontSize:11,color:'#aaa',marginTop:4}}>{fmtDate(r.created_at)}</div>
-            </div>
+    <div className="panel">
+      <div className="panel-header"><span className="panel-title">⚠ Low Stock Alert</span></div>
+      {items.length===0?<div style={{padding:'20px',textAlign:'center'}}><span style={{fontSize:13,color:'#aaa'}}>All stock levels OK ✓</span></div>:items.map((p,i)=>(
+        <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
+          <div style={{fontSize:13,fontWeight:600}}>{p.name}</div>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <span style={{fontSize:16,fontWeight:800,color:p.quantity===0?'#ef4444':p.quantity<=3?'#ef4444':'#f59e0b'}}>{p.quantity}</span>
+            <Badge status={p.quantity===0?'Out of Stock':p.quantity<=3?'Critical':'Low Stock'}/>
           </div>
         </div>
       ))}
@@ -552,9 +352,9 @@ function Refunds() {
   )
 }
 
-/* ══════════════════════════════════
+/* ════════════════════
    POS
-══════════════════════════════════ */
+════════════════════ */
 function POS() {
   const [products,setProducts]=useState([])
   const [cart,setCart]=useState([])
@@ -562,18 +362,19 @@ function POS() {
   const [payment,setPayment]=useState('Cash')
   const [custName,setCustName]=useState('')
   const [custPhone,setCustPhone]=useState('')
-  const [discount,setDiscount]=useState(0)
-  const [saved,setSaved]=useState(null)
+  const [discount,setDiscount]=useState('')
   const [saving,setSaving]=useState(false)
   const [lastReceipt,setLastReceipt]=useState(null)
+  const [toast,setToast]=useState('')
 
   useEffect(()=>{ supabase.from('products').select('*').eq('visible',true).gt('quantity',0).order('name').then(({data})=>setProducts(data||[])) },[])
 
+  const showToast=m=>{ setToast(m); setTimeout(()=>setToast(''),2500) }
   const shown=search?products.filter(p=>p.name.toLowerCase().includes(search.toLowerCase())):products
-  const add=p=>setCart(c=>{ const e=c.find(x=>x.id===p.id); if(e) return c.map(x=>x.id===p.id?{...x,qty:x.qty+1}:x); return [...c,{id:p.id,name:p.name,price:p.price,cost:p.cost_price||0,qty:1}] })
+  const add=p=>{ setCart(c=>{ const e=c.find(x=>x.id===p.id); if(e) return c.map(x=>x.id===p.id?{...x,qty:x.qty+1}:x); return [...c,{id:p.id,name:p.name,price:p.price,cost:p.cost_price||0,qty:1}] }); showToast(`${p.name.slice(0,20)} added`) }
   const subtotal=cart.reduce((a,c)=>a+c.price*c.qty,0)
-  const discAmt=discount>0?Math.min(subtotal,Number(discount)):0
-  const total=subtotal-discAmt
+  const discAmt=Number(discount)||0
+  const total=Math.max(0,subtotal-discAmt)
   const profit=cart.reduce((a,c)=>a+(c.price-c.cost)*c.qty,0)-discAmt
 
   async function complete() {
@@ -585,110 +386,317 @@ function POS() {
       for(const c of cart) await supabase.rpc('decrement_stock',{product_id:c.id,qty:c.qty}).catch(()=>{})
       if(custPhone) { const ph=custPhone.replace(/\s+/g,'').replace(/^0/,'233'); await supabase.from('customers').upsert({phone:ph,name:custName||null,last_purchase:new Date().toISOString()},{onConflict:'phone'}).catch(()=>{}) }
     }
-    setLastReceipt({receipt_no:receipt,items,total,profit,payment,discount:discAmt,customer_name:custName,customer_phone:custPhone,date:new Date().toISOString()})
-    setSaving(false); setCart([]); setCustName(''); setCustPhone(''); setDiscount(0); setSaved(receipt); setTimeout(()=>setSaved(null),4000)
+    const rec={receipt_no:receipt,items,total,profit,payment,discount:discAmt,customer_name:custName,customer_phone:custPhone,date:new Date().toISOString()}
+    setSaving(false); setLastReceipt(rec); setCart([]); setCustName(''); setCustPhone(''); setDiscount('')
   }
 
   return (
     <div>
-      <h1 style={{...s.sectionTitle,marginBottom:16}}>Point of Sale</h1>
-      {saved&&<div style={{background:'#dcfce7',color:'#15803d',fontSize:13,fontWeight:600,padding:'10px 16px',borderRadius:6,marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>✓ Sale recorded · {saved}<button onClick={()=>setLastReceipt(r=>r?{...r}:null)} style={{background:'none',border:'none',cursor:'pointer',fontSize:12,color:'#15803d',textDecoration:'underline'}}>Print receipt</button></div>}
-      <div style={{display:'grid',gridTemplateColumns:'1fr 340px',gap:16,alignItems:'start'}}>
+      {toast&&<div style={{position:'fixed',top:70,left:'50%',transform:'translateX(-50%)',background:'#0d1b3e',color:'#fff',padding:'8px 20px',borderRadius:20,fontSize:12,fontWeight:600,zIndex:300,whiteSpace:'nowrap',boxShadow:'0 4px 20px rgba(0,0,0,.2)'}}>{toast}</div>}
+      {lastReceipt&&(
+        <Modal title="Receipt" onClose={()=>setLastReceipt(null)} footer={<><button className="btn-primary" onClick={()=>window.print()}>🖨 Print</button><button className="btn-secondary" onClick={()=>setLastReceipt(null)}>Close</button></>}>
+          <div style={{textAlign:'center',marginBottom:20,paddingTop:8}}>
+            <div style={{fontFamily:'var(--serif)',fontSize:22,fontWeight:600,color:'#0d1b3e'}}>Esterea Home</div>
+            <div style={{fontSize:11,color:'#aaa'}}>Accra, Ghana · 0547927722</div>
+            <div style={{fontSize:11,color:'#aaa',marginTop:2}}>{fmt(lastReceipt.date)}</div>
+            <div style={{fontSize:10,fontFamily:'monospace',color:'#ccc',marginTop:2}}>{lastReceipt.receipt_no}</div>
+          </div>
+          {lastReceipt.items.map((it,i)=>(
+            <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'8px 0',borderBottom:'1px solid #f5f5f5'}}>
+              <span>{it.qty}× {it.name}</span><span style={{fontWeight:700}}>{ghs((it.price||0)*it.qty)}</span>
+            </div>
+          ))}
+          {lastReceipt.discount>0&&<div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#ef4444',marginTop:8}}><span>Discount</span><span>- {ghs(lastReceipt.discount)}</span></div>}
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:18,fontWeight:800,marginTop:12,padding:'12px 0',borderTop:'2px solid #0d1b3e',color:'#0d1b3e'}}><span>Total</span><span>{ghs(lastReceipt.total)}</span></div>
+          <div style={{fontSize:12,color:'#888',marginTop:4}}>Payment: {lastReceipt.payment}</div>
+          {lastReceipt.customer_name&&<div style={{fontSize:12,color:'#aaa'}}>Customer: {lastReceipt.customer_name}</div>}
+          <div style={{textAlign:'center',fontSize:11,color:'#aaa',marginTop:20,padding:'12px',background:'#f4f6fb',borderRadius:10}}>Thank you for shopping with us!</div>
+        </Modal>
+      )}
+      <div className="page-header">
+        <div><div className="page-title">Point of Sale</div><div className="page-sub">In-store sales terminal</div></div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 330px',gap:16,alignItems:'start'}}>
+        {/* Products */}
         <div>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…" style={{...s.input,marginBottom:12}}/>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:8,maxHeight:'68vh',overflowY:'auto'}}>
+          <div className="search-box" style={{marginBottom:14}}>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…"/>
+          </div>
+          <div className="pos-product-grid">
             {shown.map(p=>(
-              <button key={p.id} onClick={()=>add(p)} style={{background:'#fff',border:'1px solid #ebebeb',borderRadius:8,padding:10,textAlign:'left',cursor:'pointer',transition:'border-color .15s'}}
-                onMouseEnter={e=>e.currentTarget.style.borderColor='#1a1a2e'} onMouseLeave={e=>e.currentTarget.style.borderColor='#ebebeb'}>
-                {p.image&&<img src={cdn(p.image,200)} style={{width:'100%',height:70,objectFit:'cover',marginBottom:6,borderRadius:4,display:'block'}} alt=""/>}
-                <div style={{fontSize:12,fontWeight:600,marginBottom:3}} className="clip2">{p.name}</div>
-                <div style={{fontSize:13,fontWeight:700,color:'#1a1a2e'}}>{ghs(p.price)}</div>
-                <div style={{fontSize:10,color:'#aaa',marginTop:2}}>Stock: {p.quantity}</div>
-              </button>
+              <div key={p.id} className="pos-card" onClick={()=>add(p)}>
+                {p.image
+                  ? <img src={cdn(p.image,240)} className="pos-card-img" alt={p.name}/>
+                  : <div className="pos-card-img" style={{display:'flex',alignItems:'center',justifyContent:'center',color:'#ddd',fontSize:28,fontFamily:'var(--serif)'}}>E</div>
+                }
+                <div className="pos-card-name">{p.name}</div>
+                <div className="pos-card-price">{ghs(p.price)}</div>
+                <div className="pos-card-stock">Stock: {p.quantity}</div>
+              </div>
             ))}
           </div>
         </div>
-        <div style={{background:'#fff',border:'1px solid #ebebeb',borderRadius:8,padding:16,position:'sticky',top:0}}>
-          <div style={{display:'flex',justifyContent:'space-between',marginBottom:10}}>
-            <span style={{fontSize:14,fontWeight:700}}>Cart</span>
-            {cart.length>0&&<button onClick={()=>setCart([])} style={{background:'none',border:'none',cursor:'pointer',fontSize:11,color:'#aaa',textDecoration:'underline'}}>Clear</button>}
+
+        {/* Cart */}
+        <div className="cart-panel">
+          <div className="cart-panel-header">
+            <span className="cart-panel-title">🛒 Cart {cart.length>0&&<span style={{background:'rgba(59,130,246,.3)',color:'#93c5fd',borderRadius:10,padding:'1px 8px',fontSize:11,marginLeft:6}}>{cart.reduce((a,c)=>a+c.qty,0)}</span>}</span>
+            {cart.length>0&&<button onClick={()=>setCart([])} style={{background:'none',border:'none',cursor:'pointer',fontSize:11,color:'rgba(255,255,255,.3)',textDecoration:'underline'}}>Clear</button>}
           </div>
-          {cart.length===0?<p style={{fontSize:12,color:'#ccc',textAlign:'center',padding:'20px 0'}}>Tap a product to add</p>:(
-            <div style={{maxHeight:'38vh',overflowY:'auto',marginBottom:10}}>
-              {cart.map(c=>(
-                <div key={c.id} style={{display:'flex',alignItems:'center',gap:6,padding:'7px 0',borderBottom:'1px solid #f5f5f5',fontSize:12}}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight:600}} className="clip1">{c.name}</div>
-                    <div style={{color:'#888',fontSize:11}}>{ghs(c.price)} ea.</div>
+          {cart.length===0
+            ? <div style={{padding:'32px 20px',textAlign:'center',color:'rgba(255,255,255,.25)',fontSize:13}}>Tap a product to add</div>
+            : <div className="cart-body">
+                {cart.map(c=>(
+                  <div key={c.id} className="cart-item">
+                    <div style={{flex:1,minWidth:0}}>
+                      <div className="cart-item-name" style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.name}</div>
+                      <div className="cart-item-price">{ghs(c.price)} ea.</div>
+                    </div>
+                    <button className="qty-btn" onClick={()=>setCart(cs=>cs.filter(x=>x.id!==c.id))} style={{background:'rgba(239,68,68,.2)',color:'#fca5a5',fontSize:14}}>×</button>
+                    <button className="qty-btn" onClick={()=>setCart(cs=>cs.map(x=>x.id===c.id?{...x,qty:Math.max(1,x.qty-1)}:x))}>−</button>
+                    <span className="qty-num">{c.qty}</span>
+                    <button className="qty-btn" onClick={()=>setCart(cs=>cs.map(x=>x.id===c.id?{...x,qty:x.qty+1}:x))}>+</button>
+                    <span style={{fontSize:12,fontWeight:800,color:'#fff',width:56,textAlign:'right',flexShrink:0}}>{ghs(c.price*c.qty)}</span>
                   </div>
-                  <button onClick={()=>setCart(cs=>cs.filter(x=>x.id!==c.id))} style={{background:'none',border:'none',cursor:'pointer',color:'#ddd',fontSize:16,lineHeight:1,padding:'0 2px'}}>×</button>
-                  <button onClick={()=>setCart(cs=>cs.map(x=>x.id===c.id?{...x,qty:Math.max(1,x.qty-1)}:x))} style={{width:22,height:22,background:'#f5f5f3',border:'none',cursor:'pointer',borderRadius:3,fontSize:14,display:'flex',alignItems:'center',justifyContent:'center'}}>-</button>
-                  <span style={{width:22,textAlign:'center',fontWeight:700}}>{c.qty}</span>
-                  <button onClick={()=>setCart(cs=>cs.map(x=>x.id===c.id?{...x,qty:x.qty+1}:x))} style={{width:22,height:22,background:'#f5f5f3',border:'none',cursor:'pointer',borderRadius:3,fontSize:14,display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
-                  <span style={{width:56,textAlign:'right',fontWeight:700}}>{ghs(c.price*c.qty)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          <div style={{borderTop:'1px solid #ebebeb',paddingTop:10,marginBottom:10}}>
-            <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#888',marginBottom:4}}><span>Subtotal</span><span>{ghs(subtotal)}</span></div>
+                ))}
+              </div>
+          }
+          <div className="cart-total">
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'rgba(255,255,255,.45)',marginBottom:4}}><span>Subtotal</span><span>{ghs(subtotal)}</span></div>
             <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
-              <span style={{fontSize:11,color:'#888',flexShrink:0}}>Discount GH₵</span>
-              <input type="number" min="0" step="0.01" value={discount||''} onChange={e=>setDiscount(e.target.value)} placeholder="0.00" style={{...s.input,height:30,fontSize:12,flex:1}}/>
+              <span style={{fontSize:11,color:'rgba(255,255,255,.4)',flexShrink:0}}>Discount GH₵</span>
+              <input type="number" min="0" value={discount} onChange={e=>setDiscount(e.target.value)} placeholder="0.00" className="cart-input" style={{height:28,marginBottom:0}}/>
             </div>
-            {discAmt>0&&<div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#e53e3e',marginBottom:4}}><span>Discount</span><span>- {ghs(discAmt)}</span></div>}
-            <div style={{display:'flex',justifyContent:'space-between',fontWeight:700,fontSize:16}}><span>Total</span><span>{ghs(total)}</span></div>
-            {total>0&&<div style={{fontSize:11,color:'#15803d',marginTop:2}}>Profit: {ghs(profit)}</div>}
+            <div className="cart-total-row">
+              <span className="cart-total-label">Total</span>
+              <span className="cart-total-value">{ghs(total)}</span>
+            </div>
+            {total>0&&<div style={{fontSize:11,color:'#34d399',marginTop:3}}>Profit: {ghs(profit)}</div>}
           </div>
-          <div style={{display:'flex',gap:3,marginBottom:10,background:'#f5f5f3',padding:3,borderRadius:6}}>
+          <div className="pay-methods">
             {['Cash','MoMo','Paystack'].map(m=>(
-              <button key={m} onClick={()=>setPayment(m)} style={{flex:1,padding:'7px 0',background:payment===m?'#fff':'transparent',border:'none',cursor:'pointer',fontSize:11,fontWeight:payment===m?700:400,color:payment===m?'#111':'#888',transition:'all .15s',borderRadius:4}}>{m}</button>
+              <button key={m} className={`pay-btn${payment===m?' active':''}`} onClick={()=>setPayment(m)}>{m}</button>
             ))}
           </div>
-          <input value={custName} onChange={e=>setCustName(e.target.value)} placeholder="Customer name (opt.)" style={{...s.input,marginBottom:6,height:34,fontSize:12}}/>
-          <input value={custPhone} onChange={e=>setCustPhone(e.target.value)} placeholder="Phone (opt.)" style={{...s.input,marginBottom:10,height:34,fontSize:12}}/>
-          <button onClick={complete} disabled={!cart.length||saving} style={{...s.btn,width:'100%',justifyContent:'center',padding:'12px 0',fontSize:13,opacity:!cart.length||saving?0.3:1,borderRadius:6}}>
-            {saving?'Recording…':`Complete · ${ghs(total)}`}
+          <div className="cart-inputs">
+            <input value={custName} onChange={e=>setCustName(e.target.value)} placeholder="Customer name (optional)" className="cart-input"/>
+            <input value={custPhone} onChange={e=>setCustPhone(e.target.value)} placeholder="Phone (optional)" className="cart-input" style={{marginBottom:0}}/>
+          </div>
+          <button className="cart-complete-btn" disabled={!cart.length||saving} onClick={complete}>
+            {saving?'Recording…':`Complete Sale · ${ghs(total)}`}
           </button>
         </div>
       </div>
-      {lastReceipt&&(
-        <Modal title="Receipt" onClose={()=>setLastReceipt(null)}>
-          <div style={{textAlign:'center',marginBottom:16}}>
-            <div style={{fontFamily:'var(--serif)',fontSize:20}}>Esterea Home</div>
-            <div style={{fontSize:11,color:'#aaa'}}>Accra, Ghana · 0547927722</div>
-            <div style={{fontSize:11,color:'#aaa',marginTop:2}}>{fmt(lastReceipt.date)}</div>
-            <div style={{fontSize:10,fontFamily:'monospace',color:'#bbb',marginTop:2}}>{lastReceipt.receipt_no}</div>
+    </div>
+  )
+}
+
+/* ════════════════════
+   INVOICES
+════════════════════ */
+function Invoices() {
+  const [orders,setOrders]=useState([]),[filter,setFilter]=useState('all'),[search,setSearch]=useState(''),[loading,setLoading]=useState(true),[detail,setDetail]=useState(null)
+  useEffect(()=>{ load() },[])
+  async function load() { setLoading(true); const{data}=await supabase.from('whatsapp_orders').select('*').order('date',{ascending:false}).limit(300); setOrders(data||[]); setLoading(false) }
+  async function upd(id,status) { await supabase.from('whatsapp_orders').update({status}).eq('id',id); setOrders(os=>os.map(o=>o.id===id?{...o,status}:o)) }
+  const counts=['Pending','Paid','Completed','Cancelled'].reduce((a,st)=>({...a,[st]:orders.filter(o=>o.status===st).length}),{})
+  const shown=orders.filter(o=>{
+    if(filter!=='all'&&o.status!==filter) return false
+    if(search&&!o.customer_name?.toLowerCase().includes(search.toLowerCase())&&!o.customer_phone?.includes(search)&&!o.order_no?.toLowerCase().includes(search.toLowerCase())) return false
+    return true
+  })
+  return (
+    <div>
+      {detail&&(
+        <Modal title={`Invoice ${detail.order_no}`} onClose={()=>setDetail(null)} footer={<button className="btn-secondary" onClick={()=>setDetail(null)}>Close</button>}>
+          <div style={{display:'grid',gap:2}}>
+            {[['Customer',detail.customer_name],['Phone',detail.customer_phone],['Date',fmt(detail.date||detail.created_at)],['Address',detail.address],['Notes',detail.notes]].map(([k,v])=>v&&(
+              <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'9px 0',borderBottom:'1px solid #f5f5f5',fontSize:13}}>
+                <span style={{color:'#777'}}>{k}</span><span style={{fontWeight:600}}>{v}</span>
+              </div>
+            ))}
+            <div style={{padding:'9px 0',borderBottom:'1px solid #f5f5f5',display:'flex',justifyContent:'space-between',fontSize:13}}><span style={{color:'#777'}}>Status</span><Badge status={detail.status}/></div>
           </div>
-          {lastReceipt.items.map((it,i)=>(
-            <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'6px 0',borderBottom:'1px solid #f5f5f5'}}>
-              <span>{it.qty}× {it.name}</span><span style={{fontWeight:600}}>{ghs((it.price||0)*it.qty)}</span>
-            </div>
-          ))}
-          {lastReceipt.discount>0&&<div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#e53e3e',marginTop:6}}><span>Discount</span><span>- {ghs(lastReceipt.discount)}</span></div>}
-          <div style={{display:'flex',justifyContent:'space-between',fontSize:16,fontWeight:700,marginTop:10,paddingTop:10,borderTop:'2px solid #111'}}><span>Total</span><span>{ghs(lastReceipt.total)}</span></div>
-          <div style={{fontSize:12,color:'#888',marginTop:4}}>Payment: {lastReceipt.payment}</div>
-          {lastReceipt.customer_name&&<div style={{fontSize:12,color:'#aaa'}}>Customer: {lastReceipt.customer_name}</div>}
-          <div style={{textAlign:'center',fontSize:11,color:'#aaa',marginTop:20}}>Thank you for shopping with us!</div>
-          <button onClick={()=>window.print()} style={{...s.btnGhost,width:'100%',justifyContent:'center',marginTop:12}}>🖨 Print</button>
+          <div style={{marginTop:16}}>
+            <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:'#aaa',textTransform:'uppercase',letterSpacing:'.05em'}}>Items</div>
+            {(detail.items?(typeof detail.items==='string'?JSON.parse(detail.items):detail.items):[]).map((it,i)=>(
+              <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'8px 0',borderBottom:'1px solid #f5f5f5'}}>
+                <span>{it.qty}× {it.name}</span><span style={{fontWeight:700}}>{ghs((it.price||0)*it.qty)}</span>
+              </div>
+            ))}
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:16,fontWeight:800,marginTop:10,paddingTop:10,borderTop:'2px solid #0d1b3e',color:'#0d1b3e'}}><span>Total</span><span>{ghs(detail.total)}</span></div>
+          </div>
         </Modal>
+      )}
+      <div className="page-header">
+        <div><div className="page-title">Invoices</div><div className="page-sub">Online orders & payments</div></div>
+        <button className="btn-secondary" onClick={load}>↻ Refresh</button>
+      </div>
+      <div className="stat-grid" style={{gridTemplateColumns:'repeat(4,1fr)'}}>
+        <StatCard label="Paid" value={counts.Paid||0} sub="completed" variant="green"/>
+        <StatCard label="Pending" value={counts.Pending||0} sub="awaiting" variant="amber"/>
+        <StatCard label="Completed" value={counts.Completed||0} sub="delivered"/>
+        <StatCard label="Cancelled" value={counts.Cancelled||0} sub="cancelled" variant="red"/>
+      </div>
+      <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
+        <div className="search-box" style={{flex:1,minWidth:220}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name, phone, or order #…"/>
+        </div>
+        <div className="filter-tabs">
+          {[['all','All'],['Pending','Pending'],['Paid','Paid'],['Completed','Completed'],['Cancelled','Cancelled']].map(([v,l])=>(
+            <button key={v} className={`filter-tab${filter===v?' active':''}`} onClick={()=>setFilter(v)}>{l}</button>
+          ))}
+        </div>
+      </div>
+      {loading?<Spinner/>:shown.length===0?<Empty text="No invoices found."/>:(
+        <div className="panel">
+          {shown.map(o=>{
+            const items=o.items?(typeof o.items==='string'?JSON.parse(o.items):o.items):[]
+            return (
+              <div key={o.id} style={{padding:'16px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}}>
+                  <div>
+                    <div style={{fontSize:10,color:'#aaa',fontFamily:'monospace',marginBottom:2}}>{o.order_no}</div>
+                    <div style={{fontSize:15,fontWeight:700}}>{o.customer_name||'Customer'}</div>
+                    <div style={{fontSize:12,color:'#888'}}>{o.customer_phone} · {fmtDate(o.date||o.created_at)}</div>
+                  </div>
+                  <div style={{textAlign:'right'}}>
+                    <div style={{fontSize:18,fontWeight:800,color:'#0d1b3e'}}>{ghs(o.total)}</div>
+                    <Badge status={o.status}/>
+                  </div>
+                </div>
+                {items.length>0&&<p style={{fontSize:12,color:'#aaa',marginBottom:6}}>{items.map(i=>`${i.qty}× ${i.name}`).join(' · ')}</p>}
+                <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                  {o.status==='Pending'&&<button className="btn-primary btn-sm" onClick={()=>upd(o.id,'Paid')}>Mark Paid</button>}
+                  {o.status==='Paid'&&<button className="btn-primary btn-sm" onClick={()=>upd(o.id,'Completed')}>Mark Completed</button>}
+                  {!['Cancelled','Completed'].includes(o.status)&&<button className="btn-danger btn-sm" onClick={()=>upd(o.id,'Cancelled')}>Cancel</button>}
+                  <button className="btn-secondary btn-sm" onClick={()=>setDetail(o)}>View Details</button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
       )}
     </div>
   )
 }
 
-/* ══════════════════════════════════
-   PRODUCTS / INVENTORY
-══════════════════════════════════ */
-function Products() {
-  const [products,setProducts]=useState([])
-  const [editing,setEditing]=useState(null)
-  const [stockModal,setStockModal]=useState(null)
-  const [search,setSearch]=useState('')
-  const [filter,setFilter]=useState('all')
-  const [loading,setLoading]=useState(true)
-  const [saving,setSaving]=useState(false)
+/* ════════════════════
+   RECEIPTS
+════════════════════ */
+function Receipts() {
+  const [sales,setSales]=useState([]),[search,setSearch]=useState(''),[loading,setLoading]=useState(true),[detail,setDetail]=useState(null)
+  useEffect(()=>{ load() },[])
+  async function load() { setLoading(true); const{data}=await supabase.from('sales').select('*').eq('voided',false).order('date',{ascending:false}).limit(300); setSales(data||[]); setLoading(false) }
+  const shown=sales.filter(s=>!search||s.receipt_no?.toLowerCase().includes(search.toLowerCase())||s.customer_name?.toLowerCase().includes(search.toLowerCase()))
+  const total=sales.reduce((a,s)=>a+Number(s.total||0),0),profit=sales.reduce((a,s)=>a+Number(s.profit||0),0)
+  return (
+    <div>
+      {detail&&(
+        <Modal title={`Receipt ${detail.receipt_no}`} onClose={()=>setDetail(null)} footer={<><button className="btn-primary" onClick={()=>window.print()}>🖨 Print</button><button className="btn-secondary" onClick={()=>setDetail(null)}>Close</button></>}>
+          <div style={{textAlign:'center',marginBottom:20,paddingTop:8}}>
+            <div style={{fontFamily:'var(--serif)',fontSize:22,color:'#0d1b3e'}}>Esterea Home</div>
+            <div style={{fontSize:11,color:'#aaa'}}>Accra, Ghana · 0547927722</div>
+            <div style={{fontSize:11,color:'#aaa',marginTop:2}}>{fmt(detail.date)}</div>
+            <div style={{fontSize:10,fontFamily:'monospace',color:'#ccc'}}>{detail.receipt_no}</div>
+          </div>
+          {(detail.items?(typeof detail.items==='string'?JSON.parse(detail.items):detail.items):[]).map((it,i)=>(
+            <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'8px 0',borderBottom:'1px solid #f5f5f5'}}>
+              <span>{it.qty}× {it.name}</span><span style={{fontWeight:700}}>{ghs((it.price||0)*it.qty)}</span>
+            </div>
+          ))}
+          {detail.discount>0&&<div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#ef4444',marginTop:8}}><span>Discount</span><span>-{ghs(detail.discount)}</span></div>}
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:18,fontWeight:800,marginTop:10,paddingTop:10,borderTop:'2px solid #0d1b3e',color:'#0d1b3e'}}><span>Total</span><span>{ghs(detail.total)}</span></div>
+          <div style={{fontSize:12,color:'#888',marginTop:4}}>Payment: {detail.payment}</div>
+          {detail.customer_name&&<div style={{fontSize:12,color:'#aaa'}}>Customer: {detail.customer_name}</div>}
+          <div style={{textAlign:'center',fontSize:11,color:'#aaa',marginTop:20}}>Thank you for shopping with us!</div>
+        </Modal>
+      )}
+      <div className="page-header">
+        <div><div className="page-title">Receipts</div><div className="page-sub">{sales.length} receipts · {ghs(total)} revenue · {ghs(profit)} profit</div></div>
+      </div>
+      <div className="search-box" style={{maxWidth:380,marginBottom:14}}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search receipt, customer…"/>
+      </div>
+      {loading?<Spinner/>:shown.length===0?<Empty text="No receipts."/>:(
+        <div className="panel">
+          {shown.map(s=>{
+            const items=s.items?(typeof s.items==='string'?JSON.parse(s.items):s.items):[]
+            return (
+              <div key={s.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
+                <div>
+                  <div style={{fontSize:10,color:'#aaa',fontFamily:'monospace'}}>{s.receipt_no}</div>
+                  <div style={{fontSize:15,fontWeight:700}}>{ghs(s.total)}</div>
+                  <div style={{fontSize:11,color:'#888'}}>{s.payment} · Profit: <span style={{color:'#10b981',fontWeight:700}}>{ghs(s.profit)}</span></div>
+                  {items.length>0&&<div style={{fontSize:11,color:'#aaa',marginTop:2}}>{items.map(i=>`${i.qty}× ${i.name}`).join(' · ')}</div>}
+                </div>
+                <div style={{textAlign:'right',display:'flex',flexDirection:'column',alignItems:'flex-end',gap:6}}>
+                  <div style={{fontSize:11,color:'#aaa'}}>{fmtDate(s.date)}</div>
+                  <button className="btn-secondary btn-sm" onClick={()=>setDetail(s)}>View</button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
+/* ════════════════════
+   REFUNDS
+════════════════════ */
+function Refunds() {
+  const [refunds,setRefunds]=useState([]),[loading,setLoading]=useState(true),[modal,setModal]=useState(false),[saving,setSaving]=useState(false)
+  const [form,setForm]=useState({order_ref:'',amount:'',reason:'',payment_method:'Cash',staff_name:''})
+  useEffect(()=>{ load() },[])
+  async function load() { setLoading(true); const{data}=await supabase.from('refunds').select('*').order('created_at',{ascending:false}).limit(200); setRefunds(data||[]); setLoading(false) }
+  async function save() {
+    if(!form.order_ref||!form.amount) return; setSaving(true)
+    await supabase.from('refunds').insert({...form,amount:Number(form.amount),created_at:new Date().toISOString(),status:'Refunded'})
+    setSaving(false); setModal(false); setForm({order_ref:'',amount:'',reason:'',payment_method:'Cash',staff_name:''}); load()
+  }
+  const total=refunds.reduce((a,r)=>a+Number(r.amount||0),0)
+  return (
+    <div>
+      {modal&&(
+        <Modal title="Issue Refund" onClose={()=>setModal(false)} footer={<><button className="btn-primary" onClick={save} disabled={saving||!form.order_ref||!form.amount}>{saving?'Saving…':'Issue Refund'}</button><button className="btn-secondary" onClick={()=>setModal(false)}>Cancel</button></>}>
+          <Field label="Order / Receipt Reference" value={form.order_ref} onChange={v=>setForm({...form,order_ref:v})} placeholder="e.g. POS-ABC123" required/>
+          <NumField label="Refund Amount (GH₵)" value={form.amount} onChange={v=>setForm({...form,amount:v})} required/>
+          <Select label="Refund Method" value={form.payment_method} onChange={v=>setForm({...form,payment_method:v})} options={['Cash','MoMo','Paystack']}/>
+          <TextArea label="Reason" value={form.reason} onChange={v=>setForm({...form,reason:v})} placeholder="Why is this being refunded?" rows={2}/>
+          <Field label="Approved by (Staff)" value={form.staff_name} onChange={v=>setForm({...form,staff_name:v})} placeholder="Staff name"/>
+        </Modal>
+      )}
+      <div className="page-header">
+        <div><div className="page-title">Refunds</div><div className="page-sub">{refunds.length} issued · {ghs(total)} total</div></div>
+        <button className="btn-primary" onClick={()=>setModal(true)}>+ Issue Refund</button>
+      </div>
+      {loading?<Spinner/>:refunds.length===0?<Empty text="No refunds issued."/>:(
+        <div className="panel">
+          {refunds.map(r=>(
+            <div key={r.id} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'14px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
+              <div>
+                <div style={{fontSize:11,color:'#aaa',marginBottom:2}}>Ref: {r.order_ref}</div>
+                <div style={{fontSize:15,fontWeight:700,color:'#ef4444'}}>{ghs(r.amount)}</div>
+                <div style={{fontSize:11,color:'#888'}}>{r.payment_method}{r.staff_name&&` · ${r.staff_name}`}</div>
+                {r.reason&&<div style={{fontSize:11,color:'#aaa',marginTop:2}}>{r.reason}</div>}
+              </div>
+              <div style={{textAlign:'right'}}><Badge status="Refunded"/><div style={{fontSize:11,color:'#aaa',marginTop:4}}>{fmtDate(r.created_at)}</div></div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ════════════════════
+   PRODUCTS
+════════════════════ */
+function Products() {
+  const [products,setProducts]=useState([]),[editing,setEditing]=useState(null),[stockModal,setStockModal]=useState(null)
+  const [search,setSearch]=useState(''),[filter,setFilter]=useState('all'),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false)
   useEffect(()=>{ load() },[])
   async function load() { setLoading(true); const{data}=await supabase.from('products').select('*').order('name'); setProducts(data||[]); setLoading(false) }
   async function save() {
@@ -699,18 +707,13 @@ function Products() {
   }
   async function del(id) { if(!confirm('Delete product?')) return; await supabase.from('products').delete().eq('id',id); load() }
   async function toggleVis(id,v) { await supabase.from('products').update({visible:!v}).eq('id',id); setProducts(ps=>ps.map(p=>p.id===id?{...p,visible:!v}:p)) }
-
   const blank={name:'',category:'',price:0,cost_price:0,quantity:0,image:'',description:'',visible:true,wholesale_price:0,wholesale_min_qty:0}
-  const stockLabel=q=>q===0?['Out of Stock','#fee2e2:#b91c1c']:q<=3?['Critical','#fee2e2:#b91c1c']:q<=10?['Low Stock','#fef9c3:#92400e']:['In Stock','#dcfce7:#15803d']
-
+  const stockStatus=q=>q===0?['Out of Stock','stock-crit']:q<=3?['Critical','stock-crit']:q<=10?['Low Stock','stock-low']:['In Stock','stock-ok']
   const filtered=products.filter(p=>{
     if(search&&!p.name.toLowerCase().includes(search.toLowerCase())&&!(p.category||'').toLowerCase().includes(search.toLowerCase())) return false
-    if(filter==='active'&&!p.visible) return false
-    if(filter==='hidden'&&p.visible) return false
-    if(filter==='low'&&(p.quantity||0)>10) return false
+    if(filter==='active'&&!p.visible) return false; if(filter==='hidden'&&p.visible) return false; if(filter==='low'&&(p.quantity||0)>10) return false
     return true
   })
-
   return (
     <div>
       {stockModal&&(
@@ -719,89 +722,78 @@ function Products() {
         </Modal>
       )}
       {editing&&(
-        <Modal title={editing.id?'Edit Product':'New Product'} onClose={()=>setEditing(null)} wide>
-          <div style={{display:'grid',gap:14}}>
-            <ImgUpload value={editing.image||''} onChange={v=>setEditing({...editing,image:v})}/>
-            <div style={{borderTop:'1px solid #f0f0f0',paddingTop:14,display:'grid',gap:12}}>
-              <F label="Product Name" value={editing.name} onChange={v=>setEditing({...editing,name:v})} placeholder="e.g. Rattan Side Table" required/>
-              <F label="Category" value={editing.category} onChange={v=>setEditing({...editing,category:v})} placeholder="e.g. Furniture"/>
-              <TA label="Description" value={editing.description} onChange={v=>setEditing({...editing,description:v})} placeholder="Short description" rows={2}/>
+        <Modal title={editing.id?'Edit Product':'New Product'} onClose={()=>setEditing(null)} wide
+          footer={<><button className="btn-primary" onClick={save} disabled={saving||!editing.name?.trim()}>{saving?'Saving…':editing.id?'Save Changes':'Add Product'}</button><button className="btn-secondary" onClick={()=>setEditing(null)}>Cancel</button></>}>
+          <ImgUpload value={editing.image||''} onChange={v=>setEditing({...editing,image:v})}/>
+          <div style={{display:'grid',gap:0,borderTop:'1px solid #f0f0f0',paddingTop:14}}>
+            <Field label="Product Name" value={editing.name} onChange={v=>setEditing({...editing,name:v})} placeholder="e.g. Rattan Side Table" required/>
+            <Field label="Category" value={editing.category} onChange={v=>setEditing({...editing,category:v})} placeholder="e.g. Furniture"/>
+            <TextArea label="Description" value={editing.description} onChange={v=>setEditing({...editing,description:v})} placeholder="Short description shown to customers" rows={2}/>
+          </div>
+          <div style={{border:'1px solid #f0f0f0',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
+            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'#aaa',marginBottom:12}}>Pricing</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              <NumField label="Selling Price (GH₵)" value={editing.price} onChange={v=>setEditing({...editing,price:v})} required/>
+              <NumField label="Cost Price (GH₵)" value={editing.cost_price} onChange={v=>setEditing({...editing,cost_price:v})}/>
             </div>
-            <div style={{border:'1px solid #ebebeb',borderRadius:6,padding:14}}>
-              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'#aaa',marginBottom:10}}>Pricing</div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-                <N label="Selling Price (GH₵)" value={editing.price} onChange={v=>setEditing({...editing,price:v})} required/>
-                <N label="Cost Price (GH₵)" value={editing.cost_price} onChange={v=>setEditing({...editing,cost_price:v})}/>
-              </div>
-              {editing.price>0&&editing.cost_price>0&&<p style={{fontSize:11,color:'#15803d',marginTop:6}}>Margin: {ghs(editing.price-editing.cost_price)} ({((editing.price-editing.cost_price)/editing.price*100).toFixed(0)}%)</p>}
-            </div>
-            <div style={{border:'1px solid #ebebeb',borderRadius:6,padding:14}}>
-              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'#aaa',marginBottom:10}}>Stock</div>
-              <N label="Opening Quantity" value={editing.quantity} onChange={v=>setEditing({...editing,quantity:v})} step="1"/>
-              <p style={{fontSize:11,color:'#aaa',marginTop:4}}>Use Stock & Adjust to change stock after creation.</p>
-            </div>
-            <div style={{border:'1px solid #ebebeb',borderRadius:6,padding:14}}>
-              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'#aaa',marginBottom:10}}>Wholesale (optional)</div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-                <N label="Wholesale Price" value={editing.wholesale_price} onChange={v=>setEditing({...editing,wholesale_price:v})}/>
-                <N label="Min Quantity" value={editing.wholesale_min_qty} onChange={v=>setEditing({...editing,wholesale_min_qty:v})} step="1"/>
-              </div>
-            </div>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',background:'#fafafa',borderRadius:6}}>
-              <div><div style={{fontSize:13,fontWeight:600}}>Visible in Store</div><div style={{fontSize:11,color:'#aaa'}}>Customers can see and buy this product</div></div>
-              <button type="button" onClick={()=>setEditing({...editing,visible:!editing.visible})}
-                style={{width:44,height:24,borderRadius:12,background:editing.visible?'#1a1a2e':'#ddd',border:'none',cursor:'pointer',position:'relative',transition:'background .2s'}}>
-                <span style={{position:'absolute',top:3,left:editing.visible?22:3,width:18,height:18,background:'#fff',borderRadius:'50%',transition:'left .2s',display:'block',boxShadow:'0 1px 3px rgba(0,0,0,.2)'}}/>
-              </button>
-            </div>
-            <div style={{display:'flex',gap:8,paddingTop:6}}>
-              <button onClick={save} disabled={saving||!editing.name?.trim()} style={{...s.btn,flex:1,justifyContent:'center',padding:'11px 0',opacity:saving||!editing.name?.trim()?0.4:1,borderRadius:5}}>{saving?'Saving…':editing.id?'Save Changes':'Add Product'}</button>
-              <button onClick={()=>setEditing(null)} style={{...s.btnGhost,flex:1,justifyContent:'center',padding:'11px 0',borderRadius:5}}>Cancel</button>
+            {editing.price>0&&editing.cost_price>0&&<div style={{fontSize:12,color:'#10b981',marginTop:4,fontWeight:600}}>Margin: {ghs(editing.price-editing.cost_price)} ({((editing.price-editing.cost_price)/editing.price*100).toFixed(0)}%)</div>}
+          </div>
+          <div style={{border:'1px solid #f0f0f0',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
+            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'#aaa',marginBottom:12}}>Stock & Wholesale</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
+              <NumField label="Opening Qty" value={editing.quantity} onChange={v=>setEditing({...editing,quantity:v})} step="1"/>
+              <NumField label="Wholesale Price" value={editing.wholesale_price} onChange={v=>setEditing({...editing,wholesale_price:v})}/>
+              <NumField label="Wholesale Min Qty" value={editing.wholesale_min_qty} onChange={v=>setEditing({...editing,wholesale_min_qty:v})} step="1"/>
             </div>
           </div>
+          <Toggle on={editing.visible} onToggle={()=>setEditing({...editing,visible:!editing.visible})} label="Visible in Store" sub="Customers can see and buy this product"/>
         </Modal>
       )}
-
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:16}}>
-        <div><h1 style={s.sectionTitle}>Products</h1><p style={{fontSize:12,color:'#aaa'}}>{products.length} products · {products.filter(p=>(p.quantity||0)<=10).length} low stock</p></div>
-        <button onClick={()=>setEditing(blank)} style={s.btn}>+ Add Product</button>
+      <div className="page-header">
+        <div><div className="page-title">Products</div><div className="page-sub">{products.length} products · {products.filter(p=>(p.quantity||0)<=10).length} low/out of stock</div></div>
+        <button className="btn-primary" onClick={()=>setEditing(blank)}>+ Add Product</button>
       </div>
-      <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}}>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search…" style={{...s.input,flex:1,minWidth:160}}/>
-        {[['all','All'],['active','Active'],['hidden','Hidden'],['low','Low Stock']].map(([v,l])=>(
-          <button key={v} onClick={()=>setFilter(v)} style={filter===v?s.btn:s.btnGhost}>{l}</button>
-        ))}
+      <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
+        <div className="search-box" style={{flex:1,minWidth:200}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…"/>
+        </div>
+        <div className="filter-tabs">
+          {[['all','All'],['active','Active'],['hidden','Hidden'],['low','Low Stock']].map(([v,l])=>(
+            <button key={v} className={`filter-tab${filter===v?' active':''}`} onClick={()=>setFilter(v)}>{l}</button>
+          ))}
+        </div>
       </div>
-
       {loading?<Spinner/>:filtered.length===0?<Empty text="No products."/>:(
-        <div style={{background:'#fff',border:'1px solid #ebebeb',borderRadius:8,overflow:'hidden'}}>
-          <table style={{width:'100%',borderCollapse:'collapse'}}>
-            <thead><tr><th style={s.th}>Product</th><th style={s.th}>Category</th><th style={s.th}>Price</th><th style={s.th}>Cost</th><th style={s.th}>Stock</th><th style={s.th}>Status</th><th style={{...s.th,textAlign:'right'}}>Actions</th></tr></thead>
+        <div className="panel" style={{overflow:'hidden'}}>
+          <table className="data-table">
+            <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Cost</th><th>Stock</th><th>Visibility</th><th style={{textAlign:'right'}}>Actions</th></tr></thead>
             <tbody>
               {filtered.map(p=>{
-                const [slabel,colors]=[...stockLabel(p.quantity||0)]
-                const [sbg,scol]=colors.split(':')
+                const [slabel,scls]=stockStatus(p.quantity||0)
                 return (
-                  <tr key={p.id} style={{opacity:p.visible?1:.5}}>
-                    <td style={s.td}>
-                      <div style={{display:'flex',alignItems:'center',gap:10}}>
-                        <div style={{width:40,height:40,background:'#f5f5f3',borderRadius:6,overflow:'hidden',flexShrink:0}}>
-                          {p.image&&<img src={cdn(p.image,80)} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>}
-                        </div>
-                        <div><div style={{fontSize:13,fontWeight:600}}>{p.name}</div></div>
+                  <tr key={p.id} style={{opacity:p.visible?1:.55}}>
+                    <td>
+                      <div style={{display:'flex',alignItems:'center',gap:12}}>
+                        {p.image?<img src={cdn(p.image,84)} className="inv-row-img" alt=""/>:<div className="inv-row-img" style={{display:'flex',alignItems:'center',justifyContent:'center',color:'#ddd',fontFamily:'var(--serif)',fontSize:18}}>E</div>}
+                        <div><div style={{fontSize:13,fontWeight:700,color:'#0d1b3e'}}>{p.name}</div></div>
                       </div>
                     </td>
-                    <td style={s.td}><span style={{fontSize:12,color:'#666'}}>{p.category||'—'}</span></td>
-                    <td style={s.td}><span style={{fontSize:13,fontWeight:600}}>{ghs(p.price)}</span></td>
-                    <td style={s.td}><span style={{fontSize:12,color:'#888'}}>{p.cost_price?ghs(p.cost_price):'—'}</span></td>
-                    <td style={s.td}><span style={{fontSize:14,fontWeight:700}}>{p.quantity||0}</span></td>
-                    <td style={s.td}><span style={{display:'inline-block',padding:'2px 8px',background:sbg,color:scol,borderRadius:10,fontSize:11,fontWeight:600}}>{slabel}</span></td>
-                    <td style={{...s.td,textAlign:'right'}}>
+                    <td style={{color:'#888',fontSize:12}}>{p.category||'—'}</td>
+                    <td><span style={{fontSize:14,fontWeight:800}}>{ghs(p.price)}</span></td>
+                    <td style={{color:'#aaa',fontSize:12}}>{p.cost_price?ghs(p.cost_price):'—'}</td>
+                    <td>
+                      <div style={{display:'flex',alignItems:'center',gap:8}}>
+                        <span className="stock-num">{p.quantity||0}</span>
+                        <span className={`stock-pill ${scls}`}>{slabel}</span>
+                      </div>
+                    </td>
+                    <td><Badge status={p.visible?'Active':'Inactive'}/></td>
+                    <td>
                       <div style={{display:'flex',gap:4,justifyContent:'flex-end'}}>
-                        <button onClick={()=>setStockModal(p)} style={s.btnGhostSm}>± Stock</button>
-                        <button onClick={()=>toggleVis(p.id,p.visible)} style={s.btnGhostSm}>{p.visible?'Hide':'Show'}</button>
-                        <button onClick={()=>setEditing({...p})} style={s.btnGhostSm}>Edit</button>
-                        <button onClick={()=>del(p.id)} style={{...s.btnGhostSm,color:'#e53e3e',borderColor:'#fecaca'}}>Del</button>
+                        <button className="btn-secondary btn-sm" onClick={()=>setStockModal(p)}>± Stock</button>
+                        <button className="btn-secondary btn-sm" onClick={()=>toggleVis(p.id,p.visible)}>{p.visible?'Hide':'Show'}</button>
+                        <button className="btn-secondary btn-sm" onClick={()=>setEditing({...p})}>Edit</button>
+                        <button className="btn-danger btn-sm" onClick={()=>del(p.id)}>Del</button>
                       </div>
                     </td>
                   </tr>
@@ -815,24 +807,16 @@ function Products() {
   )
 }
 
-/* ══════════════════════════════════
-   PROMOS & BUNDLES
-══════════════════════════════════ */
+/* ════════════════════
+   PROMOS
+════════════════════ */
 function Promos() {
-  const [promos,setPromos]=useState([])
-  const [products,setProducts]=useState([])
-  const [modal,setModal]=useState(false)
+  const [promos,setPromos]=useState([]),[products,setProducts]=useState([]),[modal,setModal]=useState(false),[saving,setSaving]=useState(false),[loading,setLoading]=useState(true)
   const [form,setForm]=useState({product_id:'',price:'',end_date:'',label:''})
-  const [saving,setSaving]=useState(false)
-  const [loading,setLoading]=useState(true)
-
   useEffect(()=>{ load() },[])
   async function load() {
     setLoading(true)
-    const[{data:pr},{data:p}]=await Promise.all([
-      supabase.from('promos').select('*,products(name)').order('end_date',{ascending:false}),
-      supabase.from('products').select('id,name').order('name')
-    ])
+    const[{data:pr},{data:p}]=await Promise.all([supabase.from('promos').select('*,products(name)').order('end_date',{ascending:false}),supabase.from('products').select('id,name').order('name')])
     setPromos(pr||[]); setProducts(p||[]); setLoading(false)
   }
   async function save() {
@@ -840,134 +824,106 @@ function Promos() {
     await supabase.from('promos').insert({product_id:form.product_id,price:Number(form.price),end_date:new Date(form.end_date).toISOString(),label:form.label||'Sale'})
     setSaving(false); setModal(false); setForm({product_id:'',price:'',end_date:'',label:''}); load()
   }
-  async function del(id) { if(!confirm('Delete promo?')) return; await supabase.from('promos').delete().eq('id',id); load() }
-
-  const active=promos.filter(p=>new Date(p.end_date)>new Date())
-  const expired=promos.filter(p=>new Date(p.end_date)<=new Date())
-
+  async function del(id) { if(!confirm('Remove promo?')) return; await supabase.from('promos').delete().eq('id',id); load() }
+  const active=promos.filter(p=>new Date(p.end_date)>new Date()),expired=promos.filter(p=>new Date(p.end_date)<=new Date())
   return (
     <div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-        <div><h1 style={s.sectionTitle}>Promos & Bundles</h1><p style={{fontSize:12,color:'#aaa'}}>{active.length} active · {expired.length} expired</p></div>
-        <button onClick={()=>setModal(true)} style={s.btn}>+ Add Promo</button>
-      </div>
       {modal&&(
-        <Modal title="Add Promo / Sale Price" onClose={()=>setModal(false)}>
-          <div style={{display:'grid',gap:12}}>
-            <Sel label="Product *" value={form.product_id} onChange={v=>setForm({...form,product_id:v})} options={products.map(p=>({value:p.id,label:p.name}))} required/>
-            <N label="Promo Price (GH₵) *" value={form.price} onChange={v=>setForm({...form,price:v})} required/>
-            <F label="Label" value={form.label} onChange={v=>setForm({...form,label:v})} placeholder="e.g. Sale, Bundle Deal"/>
-            <div><label style={s.label}>End Date *</label><input type="datetime-local" value={form.end_date} onChange={e=>setForm({...form,end_date:e.target.value})} style={s.input}/></div>
-            <div style={{display:'flex',gap:8,paddingTop:8}}>
-              <button onClick={save} disabled={saving||!form.product_id||!form.price||!form.end_date} style={{...s.btn,flex:1,justifyContent:'center',opacity:saving?0.5:1}}>Save Promo</button>
-              <button onClick={()=>setModal(false)} style={{...s.btnGhost,flex:1,justifyContent:'center'}}>Cancel</button>
-            </div>
-          </div>
+        <Modal title="Add Promo / Sale Price" onClose={()=>setModal(false)} footer={<><button className="btn-primary" onClick={save} disabled={saving||!form.product_id||!form.price||!form.end_date}>{saving?'Saving…':'Save Promo'}</button><button className="btn-secondary" onClick={()=>setModal(false)}>Cancel</button></>}>
+          <Select label="Product" value={form.product_id} onChange={v=>setForm({...form,product_id:v})} options={products.map(p=>({value:p.id,label:p.name}))} required/>
+          <NumField label="Promo Price (GH₵)" value={form.price} onChange={v=>setForm({...form,price:v})} required/>
+          <Field label="Label" value={form.label} onChange={v=>setForm({...form,label:v})} placeholder="e.g. Flash Sale, Bundle Deal"/>
+          <div className="field"><label>End Date & Time</label><input type="datetime-local" className="field-input" value={form.end_date} onChange={e=>setForm({...form,end_date:e.target.value})}/></div>
         </Modal>
       )}
-      {loading?<Spinner/>:(
-        <>
-          {active.length>0&&<><div style={{fontSize:12,fontWeight:700,color:'#15803d',marginBottom:8,textTransform:'uppercase',letterSpacing:'.05em'}}>Active</div>
+      <div className="page-header">
+        <div><div className="page-title">Promos & Bundles</div><div className="page-sub">{active.length} active · {expired.length} expired</div></div>
+        <button className="btn-primary" onClick={()=>setModal(true)}>+ Add Promo</button>
+      </div>
+      {loading?<Spinner/>:<>
+        {active.length>0&&<><div style={{fontSize:11,fontWeight:700,color:'#10b981',marginBottom:8,textTransform:'uppercase',letterSpacing:'.06em'}}>Active Promos</div>
+        <div className="panel" style={{marginBottom:16,overflow:'hidden'}}>
           {active.map(p=>(
-            <div key={p.id} style={s.card}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                <div><div style={{fontSize:14,fontWeight:600}}>{p.products?.name||'Product'}</div><div style={{fontSize:12,color:'#888'}}>Sale price: {ghs(p.price)} · Ends: {fmtDate(p.end_date)}</div></div>
-                <div style={{display:'flex',gap:6,alignItems:'center'}}><Badge status="Active"/><button onClick={()=>del(p.id)} style={{...s.btnGhostSm,color:'#e53e3e',borderColor:'#fecaca'}}>Remove</button></div>
-              </div>
+            <div key={p.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
+              <div><div style={{fontSize:14,fontWeight:700}}>{p.products?.name||'Product'}</div><div style={{fontSize:12,color:'#888'}}>{p.label||'Sale'} · Price: {ghs(p.price)} · Ends {fmtDate(p.end_date)}</div></div>
+              <div style={{display:'flex',alignItems:'center',gap:8}}><Badge status="Active"/><button className="btn-danger btn-sm" onClick={()=>del(p.id)}>Remove</button></div>
             </div>
-          ))}</>}
-          {expired.length>0&&<><div style={{fontSize:12,fontWeight:700,color:'#aaa',margin:'16px 0 8px',textTransform:'uppercase',letterSpacing:'.05em'}}>Expired</div>
+          ))}
+        </div></>}
+        {expired.length>0&&<><div style={{fontSize:11,fontWeight:700,color:'#aaa',margin:'16px 0 8px',textTransform:'uppercase',letterSpacing:'.06em'}}>Expired</div>
+        <div className="panel" style={{overflow:'hidden',opacity:.65}}>
           {expired.slice(0,5).map(p=>(
-            <div key={p.id} style={{...s.card,opacity:.6}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                <div><div style={{fontSize:13,fontWeight:500}}>{p.products?.name||'Product'}</div><div style={{fontSize:11,color:'#aaa'}}>Was {ghs(p.price)} · Ended {fmtDate(p.end_date)}</div></div>
-                <button onClick={()=>del(p.id)} style={s.btnGhostSm}>Remove</button>
-              </div>
+            <div key={p.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
+              <div><div style={{fontSize:13,fontWeight:500}}>{p.products?.name||'Product'}</div><div style={{fontSize:11,color:'#aaa'}}>Was {ghs(p.price)} · Ended {fmtDate(p.end_date)}</div></div>
+              <button className="btn-secondary btn-sm" onClick={()=>del(p.id)}>Remove</button>
             </div>
-          ))}</>}
-        </>
-      )}
+          ))}
+        </div></>}
+        {active.length===0&&expired.length===0&&<Empty text="No promos set up."/>}
+      </>}
     </div>
   )
 }
 
-/* ══════════════════════════════════
+/* ════════════════════
    RESTOCK
-══════════════════════════════════ */
+════════════════════ */
 function Restock() {
-  const [entries,setEntries]=useState([])
-  const [products,setProducts]=useState([])
-  const [modal,setModal]=useState(false)
+  const [entries,setEntries]=useState([]),[products,setProducts]=useState([]),[modal,setModal]=useState(false),[saving,setSaving]=useState(false),[loading,setLoading]=useState(true)
   const [form,setForm]=useState({product_id:'',qty:'',cost_per_unit:'',supplier:'',notes:''})
-  const [saving,setSaving]=useState(false)
-  const [loading,setLoading]=useState(true)
-
   useEffect(()=>{ load() },[])
   async function load() {
     setLoading(true)
-    const[{data:e},{data:p}]=await Promise.all([
-      supabase.from('stock_adjustments').select('*,products(name)').eq('type','restock').order('created_at',{ascending:false}).limit(100),
-      supabase.from('products').select('id,name,quantity').order('name')
-    ])
+    const[{data:e},{data:p}]=await Promise.all([supabase.from('stock_adjustments').select('*,products(name)').eq('type','restock').order('created_at',{ascending:false}).limit(100),supabase.from('products').select('id,name,quantity').order('name')])
     setEntries(e||[]); setProducts(p||[]); setLoading(false)
   }
   async function save() {
     if(!form.product_id||!form.qty) return; setSaving(true)
-    const qty=Number(form.qty)
-    const prod=products.find(p=>p.id===form.product_id)
-    const before=prod?.quantity||0
+    const qty=Number(form.qty),prod=products.find(p=>p.id===form.product_id),before=prod?.quantity||0
     await supabase.from('stock_adjustments').insert({product_id:form.product_id,type:'restock',qty_before:before,qty_change:qty,qty_after:before+qty,cost_per_unit:Number(form.cost_per_unit)||null,supplier:form.supplier,notes:form.notes,created_at:new Date().toISOString()})
     await supabase.from('products').update({quantity:before+qty}).eq('id',form.product_id)
     setSaving(false); setModal(false); setForm({product_id:'',qty:'',cost_per_unit:'',supplier:'',notes:''}); load()
   }
-
   return (
     <div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-        <div><h1 style={s.sectionTitle}>Restock</h1><p style={{fontSize:12,color:'#aaa'}}>Record incoming stock</p></div>
-        <button onClick={()=>setModal(true)} style={s.btn}>+ Record Restock</button>
-      </div>
       {modal&&(
-        <Modal title="Record Restock" onClose={()=>setModal(false)}>
-          <div style={{display:'grid',gap:12}}>
-            <Sel label="Product *" value={form.product_id} onChange={v=>setForm({...form,product_id:v})} options={products.map(p=>({value:p.id,label:`${p.name} (stock: ${p.quantity||0})`}))} required/>
-            <N label="Quantity Received *" value={form.qty} onChange={v=>setForm({...form,qty:v})} step="1" required/>
-            <N label="Cost per Unit (GH₵)" value={form.cost_per_unit} onChange={v=>setForm({...form,cost_per_unit:v})}/>
-            <F label="Supplier" value={form.supplier} onChange={v=>setForm({...form,supplier:v})} placeholder="Supplier name"/>
-            <TA label="Notes" value={form.notes} onChange={v=>setForm({...form,notes:v})} placeholder="Any notes about this restock" rows={2}/>
-            <div style={{display:'flex',gap:8,paddingTop:8}}>
-              <button onClick={save} disabled={saving||!form.product_id||!form.qty} style={{...s.btn,flex:1,justifyContent:'center',opacity:saving?0.5:1}}>Record Restock</button>
-              <button onClick={()=>setModal(false)} style={{...s.btnGhost,flex:1,justifyContent:'center'}}>Cancel</button>
-            </div>
-          </div>
+        <Modal title="Record Restock" onClose={()=>setModal(false)} footer={<><button className="btn-primary" onClick={save} disabled={saving||!form.product_id||!form.qty}>{saving?'Saving…':'Record Restock'}</button><button className="btn-secondary" onClick={()=>setModal(false)}>Cancel</button></>}>
+          <Select label="Product" value={form.product_id} onChange={v=>setForm({...form,product_id:v})} options={products.map(p=>({value:p.id,label:`${p.name} (stock: ${p.quantity||0})`}))} required/>
+          <NumField label="Quantity Received" value={form.qty} onChange={v=>setForm({...form,qty:v})} step="1" required/>
+          <NumField label="Cost per Unit (GH₵)" value={form.cost_per_unit} onChange={v=>setForm({...form,cost_per_unit:v})}/>
+          <Field label="Supplier" value={form.supplier} onChange={v=>setForm({...form,supplier:v})} placeholder="Supplier name"/>
+          <TextArea label="Notes" value={form.notes} onChange={v=>setForm({...form,notes:v})} placeholder="Notes about this delivery" rows={2}/>
         </Modal>
       )}
-      {loading?<Spinner/>:entries.length===0?<Empty text="No restock records."/>:entries.map(e=>(
-        <div key={e.id} style={s.card}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-            <div>
-              <div style={{fontSize:14,fontWeight:600}}>{e.products?.name||'Product'}</div>
-              <div style={{fontSize:13,color:'#15803d',fontWeight:600}}>+{e.qty_change} units <span style={{color:'#aaa',fontWeight:400,fontSize:11}}>({e.qty_before} → {e.qty_after})</span></div>
-              {e.supplier&&<div style={{fontSize:11,color:'#888',marginTop:2}}>From: {e.supplier}</div>}
-              {e.cost_per_unit&&<div style={{fontSize:11,color:'#888'}}>Cost: {ghs(e.cost_per_unit)} per unit · Total: {ghs(e.cost_per_unit*e.qty_change)}</div>}
-              {e.notes&&<div style={{fontSize:11,color:'#aaa',marginTop:2}}>{e.notes}</div>}
+      <div className="page-header">
+        <div><div className="page-title">Restock</div><div className="page-sub">Record incoming stock deliveries</div></div>
+        <button className="btn-primary" onClick={()=>setModal(true)}>+ Record Restock</button>
+      </div>
+      {loading?<Spinner/>:entries.length===0?<Empty text="No restock records."/>:(
+        <div className="panel" style={{overflow:'hidden'}}>
+          {entries.map(e=>(
+            <div key={e.id} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'14px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
+              <div>
+                <div style={{fontSize:14,fontWeight:700}}>{e.products?.name||'Product'}</div>
+                <div style={{fontSize:13,color:'#10b981',fontWeight:700}}>+{e.qty_change} units <span style={{color:'#aaa',fontWeight:400,fontSize:11}}>({e.qty_before} → {e.qty_after})</span></div>
+                {e.supplier&&<div style={{fontSize:11,color:'#888'}}>From: {e.supplier}</div>}
+                {e.cost_per_unit&&<div style={{fontSize:11,color:'#888'}}>Cost: {ghs(e.cost_per_unit)} ea. · Total: {ghs(e.cost_per_unit*e.qty_change)}</div>}
+                {e.notes&&<div style={{fontSize:11,color:'#aaa'}}>{e.notes}</div>}
+              </div>
+              <div style={{fontSize:11,color:'#aaa',textAlign:'right',flexShrink:0}}>{fmtDate(e.created_at)}</div>
             </div>
-            <div style={{fontSize:11,color:'#aaa',textAlign:'right'}}>{fmtDate(e.created_at)}</div>
-          </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   )
 }
 
-/* ══════════════════════════════════
-   STOCK & ADJUST
-══════════════════════════════════ */
-function StockAdjustInline({ product, onDone }) {
-  const [mode,setMode]=useState('set')
-  const [qty,setQty]=useState('')
-  const [note,setNote]=useState('')
-  const [saving,setSaving]=useState(false)
+/* ════════════════════
+   STOCK ADJUST
+════════════════════ */
+function StockAdjustInline({product,onDone}) {
+  const [mode,setMode]=useState('set'),[qty,setQty]=useState(''),[note,setNote]=useState(''),[saving,setSaving]=useState(false)
   const preview=()=>{ const n=parseInt(qty)||0; if(mode==='set') return n; if(mode==='add') return (product.quantity||0)+n; return Math.max(0,(product.quantity||0)-n) }
   async function apply() {
     const n=parseInt(qty); if(isNaN(n)||n<0) return; setSaving(true)
@@ -978,145 +934,106 @@ function StockAdjustInline({ product, onDone }) {
   }
   return (
     <div>
-      <p style={{fontSize:12,color:'#888',marginBottom:12}}>{product.name}</p>
-      <div style={{display:'flex',justifyContent:'space-between',padding:'10px 14px',background:'#fafafa',borderRadius:6,marginBottom:12}}>
-        <span style={{fontSize:12,color:'#888'}}>Current stock</span>
-        <span style={{fontSize:15,fontWeight:700,color:(product.quantity||0)<=3?'#b91c1c':(product.quantity||0)<=10?'#92400e':'#15803d'}}>{product.quantity||0} units</span>
+      <p style={{fontSize:13,color:'#888',marginBottom:12,fontWeight:500}}>{product.name}</p>
+      <div style={{display:'flex',justifyContent:'space-between',padding:'12px 16px',background:'#f4f6fb',borderRadius:12,marginBottom:14}}>
+        <span style={{fontSize:12,color:'#888',fontWeight:600}}>Current stock</span>
+        <span style={{fontSize:18,fontWeight:800,color:(product.quantity||0)<=3?'#ef4444':(product.quantity||0)<=10?'#f59e0b':'#10b981'}}>{product.quantity||0} units</span>
       </div>
-      <div style={{display:'flex',gap:3,marginBottom:12,background:'#f5f5f3',padding:3,borderRadius:6}}>
+      <div style={{display:'flex',gap:4,marginBottom:14,background:'#f4f6fb',padding:4,borderRadius:10}}>
         {[['set','Set to'],['add','Add'],['remove','Remove']].map(([v,l])=>(
-          <button key={v} onClick={()=>setMode(v)} style={{flex:1,padding:'8px 0',background:mode===v?'#fff':'transparent',border:'none',cursor:'pointer',fontSize:12,fontWeight:mode===v?700:400,color:mode===v?'#111':'#888',transition:'all .15s',borderRadius:4}}>{l}</button>
+          <button key={v} onClick={()=>setMode(v)} style={{flex:1,padding:'8px 0',background:mode===v?'#fff':'transparent',border:'none',cursor:'pointer',fontSize:12,fontWeight:mode===v?700:400,color:mode===v?'#0d1b3e':'#888',transition:'all .15s',borderRadius:8,fontFamily:'var(--sans)'}}>
+            {l}
+          </button>
         ))}
       </div>
-      <div style={{marginBottom:10}}>
-        <label style={s.label}>{mode==='set'?'New quantity':mode==='add'?'Units to add':'Units to remove'}</label>
-        <input type="number" min="0" value={qty} onChange={e=>setQty(e.target.value)} autoFocus style={{...s.input,fontSize:20,fontWeight:700,textAlign:'center',height:52}}/>
+      <div className="field">
+        <label>{mode==='set'?'New quantity':mode==='add'?'Units to add':'Units to remove'}</label>
+        <input type="number" min="0" className="field-input" value={qty} onChange={e=>setQty(e.target.value)} autoFocus style={{fontSize:24,fontWeight:800,textAlign:'center',height:56}}/>
       </div>
-      {qty!==''&&<div style={{fontSize:12,color:'#15803d',background:'#dcfce7',padding:'8px 12px',borderRadius:4,marginBottom:10}}>New stock will be <strong>{preview()}</strong> units</div>}
-      <input value={note} onChange={e=>setNote(e.target.value)} placeholder="Reason (optional)" style={{...s.input,height:34,fontSize:12,marginBottom:12}}/>
-      <button onClick={apply} disabled={!qty||saving} style={{...s.btn,width:'100%',justifyContent:'center',opacity:!qty||saving?0.4:1}}>
-        {saving?'Saving…':'Update Stock'}
-      </button>
+      {qty!==''&&<div style={{fontSize:13,color:'#10b981',fontWeight:700,background:'#dcfce7',padding:'10px 14px',borderRadius:10,marginBottom:12}}>New stock will be <strong>{preview()}</strong> units</div>}
+      <div className="field"><label>Reason (optional)</label><input className="field-input" value={note} onChange={e=>setNote(e.target.value)} placeholder="e.g. Manual correction, damaged items"/></div>
+      <button className="btn-primary" style={{width:'100%',justifyContent:'center',padding:'13px 0',fontSize:14,borderRadius:12}} disabled={!qty||saving} onClick={apply}>{saving?'Saving…':'Update Stock'}</button>
     </div>
   )
 }
 
 function StockAdjust() {
-  const [products,setProducts]=useState([])
-  const [history,setHistory]=useState([])
-  const [selected,setSelected]=useState(null)
-  const [loading,setLoading]=useState(true)
-  const [search,setSearch]=useState('')
-
+  const [products,setProducts]=useState([]),[history,setHistory]=useState([]),[selected,setSelected]=useState(null),[loading,setLoading]=useState(true),[search,setSearch]=useState('')
   useEffect(()=>{ load() },[])
   async function load() {
     setLoading(true)
-    const[{data:p},{data:h}]=await Promise.all([
-      supabase.from('products').select('id,name,quantity,category').order('name'),
-      supabase.from('stock_adjustments').select('*,products(name)').order('created_at',{ascending:false}).limit(50)
-    ])
+    const[{data:p},{data:h}]=await Promise.all([supabase.from('products').select('id,name,quantity,category').order('name'),supabase.from('stock_adjustments').select('*,products(name)').order('created_at',{ascending:false}).limit(50)])
     setProducts(p||[]); setHistory(h||[]); setLoading(false)
   }
-
   const shown=search?products.filter(p=>p.name.toLowerCase().includes(search.toLowerCase())):products
-
   return (
     <div>
-      <h1 style={s.sectionTitle}>Stock & Adjust</h1>
-      <p style={{fontSize:12,color:'#aaa',marginBottom:16}}>Select a product to adjust its stock level</p>
-      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…" style={{...s.input,maxWidth:360,marginBottom:12}}/>
-      {selected&&(
-        <Modal title="Adjust Stock" onClose={()=>{setSelected(null);load()}}>
-          <StockAdjustInline product={selected} onDone={q=>{setSelected(null);setProducts(ps=>ps.map(p=>p.id===selected.id?{...p,quantity:q}:p));load()}}/>
-        </Modal>
-      )}
+      {selected&&<Modal title="Adjust Stock" onClose={()=>{setSelected(null);load()}}><StockAdjustInline product={selected} onDone={q=>{setSelected(null);setProducts(ps=>ps.map(p=>p.id===selected.id?{...p,quantity:q}:p));load()}}/></Modal>}
+      <div className="page-header">
+        <div><div className="page-title">Stock & Adjust</div><div className="page-sub">View and correct stock levels</div></div>
+      </div>
+      <div className="search-box" style={{maxWidth:360,marginBottom:14}}><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…"/></div>
       {loading?<Spinner/>:(
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:10,marginBottom:24}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:12,marginBottom:24}}>
           {shown.map(p=>{
-            const q=p.quantity||0
-            const clr=q===0?'#e53e3e':q<=3?'#c27803':q<=10?'#8a5a00':'#15803d'
+            const q=p.quantity||0,clr=q===0?'#ef4444':q<=3?'#ef4444':q<=10?'#f59e0b':'#10b981'
             return (
-              <div key={p.id} style={{...s.card,display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer'}} onClick={()=>setSelected(p)}>
-                <div><div style={{fontSize:13,fontWeight:600}}>{p.name}</div><div style={{fontSize:11,color:'#aaa'}}>{p.category}</div></div>
-                <div style={{textAlign:'right'}}>
-                  <div style={{fontSize:20,fontWeight:700,color:clr}}>{q}</div>
-                  <button style={{...s.btnSm,marginTop:4}} onClick={e=>{e.stopPropagation();setSelected(p)}}>Adjust</button>
-                </div>
+              <div key={p.id} className="panel" style={{padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer'}} onClick={()=>setSelected(p)}>
+                <div><div style={{fontSize:13,fontWeight:700}}>{p.name}</div><div style={{fontSize:11,color:'#aaa'}}>{p.category}</div></div>
+                <div style={{textAlign:'right'}}><div style={{fontSize:24,fontWeight:900,color:clr}}>{q}</div><button className="btn-primary btn-sm" style={{marginTop:4}}>Adjust</button></div>
               </div>
             )
           })}
         </div>
       )}
-      {history.length>0&&(
-        <>
-          <div style={{fontSize:13,fontWeight:700,marginBottom:10}}>Recent Adjustments</div>
+      {history.length>0&&<>
+        <div style={{fontSize:12,fontWeight:700,marginBottom:10,color:'#555',textTransform:'uppercase',letterSpacing:'.05em'}}>Recent Adjustments</div>
+        <div className="panel" style={{overflow:'hidden'}}>
           {history.map(h=>(
-            <div key={h.id} style={{...s.card,padding:'10px 14px'}}>
-              <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}>
-                <div><span style={{fontWeight:600}}>{h.products?.name}</span> <span style={{color:h.qty_change>0?'#15803d':'#e53e3e'}}>{h.qty_change>0?'+':''}{h.qty_change}</span> <span style={{color:'#aaa'}}>({h.qty_before}→{h.qty_after})</span> <span style={{color:'#888',fontSize:11}}>[{h.type}]</span></div>
-                <span style={{color:'#aaa'}}>{fmtDate(h.created_at)}</span>
-              </div>
-              {h.notes&&<div style={{fontSize:11,color:'#aaa',marginTop:2}}>{h.notes}</div>}
+            <div key={h.id} style={{display:'flex',justifyContent:'space-between',padding:'11px 20px',borderBottom:'1px solid rgba(0,0,0,.04)',fontSize:13}}>
+              <div><span style={{fontWeight:700}}>{h.products?.name}</span> <span style={{color:h.qty_change>0?'#10b981':'#ef4444',fontWeight:700}}>{h.qty_change>0?'+':''}{h.qty_change}</span> <span style={{color:'#aaa',fontSize:11}}>({h.qty_before}→{h.qty_after}) [{h.type}]</span>{h.notes&&<span style={{color:'#bbb',fontSize:11}}> · {h.notes}</span>}</div>
+              <span style={{color:'#aaa',fontSize:11,flexShrink:0}}>{fmtDate(h.created_at)}</span>
             </div>
           ))}
-        </>
-      )}
+        </div>
+      </>}
     </div>
   )
 }
 
-/* ══════════════════════════════════
+/* ════════════════════
    CUSTOMERS
-══════════════════════════════════ */
+════════════════════ */
 function Customers() {
-  const [customers,setCustomers]=useState([])
-  const [loading,setLoading]=useState(true)
-  const [search,setSearch]=useState('')
-  const [detail,setDetail]=useState(null)
-
+  const [customers,setCustomers]=useState([]),[loading,setLoading]=useState(true),[search,setSearch]=useState(''),[detail,setDetail]=useState(null)
   useEffect(()=>{ load() },[])
-  async function load() {
-    setLoading(true)
-    const{data}=await supabase.from('customers').select('*').order('last_purchase',{ascending:false}).limit(300)
-    setCustomers(data||[]); setLoading(false)
-  }
-
+  async function load() { setLoading(true); const{data}=await supabase.from('customers').select('*').order('last_purchase',{ascending:false}).limit(300); setCustomers(data||[]); setLoading(false) }
   const shown=customers.filter(c=>!search||c.name?.toLowerCase().includes(search.toLowerCase())||c.phone?.includes(search))
-
   return (
     <div>
-      <div style={{marginBottom:16}}>
-        <h1 style={s.sectionTitle}>Customers</h1>
-        <p style={{fontSize:12,color:'#aaa'}}>{customers.length} registered customers</p>
+      {detail&&<Modal title="Customer" onClose={()=>setDetail(null)} footer={<button className="btn-secondary" onClick={()=>setDetail(null)}>Close</button>}>
+        {[['Name',detail.name||'—'],['Phone',detail.phone],['Total Spent',ghs(detail.total_spent||0)],['Purchases',detail.purchase_count||0],['Last Purchase',fmtDate(detail.last_purchase)],['Joined',fmtDate(detail.created_at)]].map(([k,v])=>(
+          <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid #f5f5f5',fontSize:13}}><span style={{color:'#777'}}>{k}</span><span style={{fontWeight:700}}>{v}</span></div>
+        ))}
+      </Modal>}
+      <div className="page-header">
+        <div><div className="page-title">Customers</div><div className="page-sub">{customers.length} registered</div></div>
       </div>
-      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name or phone…" style={{...s.input,maxWidth:360,marginBottom:12}}/>
-      {detail&&(
-        <Modal title="Customer Details" onClose={()=>setDetail(null)}>
-          <div style={{display:'grid',gap:2}}>
-            {[['Name',detail.name||'—'],['Phone',detail.phone],['Total Purchases',ghs(detail.total_spent||0)],['Purchase Count',detail.purchase_count||0],['Last Purchase',fmtDate(detail.last_purchase)],['Created',fmtDate(detail.created_at)]].map(([k,v])=>(
-              <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:'1px solid #f5f5f5',fontSize:13}}>
-                <span style={{color:'#777'}}>{k}</span><span style={{fontWeight:600}}>{v}</span>
-              </div>
-            ))}
-          </div>
-        </Modal>
-      )}
-      {loading?<Spinner/>:shown.length===0?<Empty text="No customers yet."/>:(
-        <div style={{background:'#fff',border:'1px solid #ebebeb',borderRadius:8,overflow:'hidden'}}>
-          <table style={{width:'100%',borderCollapse:'collapse'}}>
-            <thead><tr><th style={s.th}>Name</th><th style={s.th}>Phone</th><th style={s.th}>Purchases</th><th style={s.th}>Total Spent</th><th style={s.th}>Last Purchase</th><th style={s.th}></th></tr></thead>
-            <tbody>
-              {shown.map(c=>(
-                <tr key={c.id}>
-                  <td style={s.td}><span style={{fontWeight:600}}>{c.name||<span style={{color:'#bbb'}}>—</span>}</span></td>
-                  <td style={s.td}>{c.phone}</td>
-                  <td style={s.td}>{c.purchase_count||0}</td>
-                  <td style={s.td}><span style={{fontWeight:600}}>{ghs(c.total_spent||0)}</span></td>
-                  <td style={s.td}><span style={{fontSize:11,color:'#888'}}>{fmtDate(c.last_purchase)}</span></td>
-                  <td style={s.td}><button onClick={()=>setDetail(c)} style={s.btnGhostSm}>View</button></td>
-                </tr>
-              ))}
-            </tbody>
+      <div className="search-box" style={{maxWidth:360,marginBottom:14}}><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name or phone…"/></div>
+      {loading?<Spinner/>:shown.length===0?<Empty text="No customers."/>:(
+        <div className="panel" style={{overflow:'hidden'}}>
+          <table className="data-table">
+            <thead><tr><th>Name</th><th>Phone</th><th>Purchases</th><th>Total Spent</th><th>Last Purchase</th><th></th></tr></thead>
+            <tbody>{shown.map(c=>(
+              <tr key={c.id}>
+                <td><span style={{fontWeight:700}}>{c.name||<span style={{color:'#ccc'}}>—</span>}</span></td>
+                <td style={{fontFamily:'monospace',fontSize:12}}>{c.phone}</td>
+                <td><span style={{fontWeight:700}}>{c.purchase_count||0}</span></td>
+                <td><span style={{fontWeight:800,color:'#0d1b3e'}}>{ghs(c.total_spent||0)}</span></td>
+                <td style={{color:'#aaa',fontSize:11}}>{fmtDate(c.last_purchase)}</td>
+                <td><button className="btn-secondary btn-sm" onClick={()=>setDetail(c)}>View</button></td>
+              </tr>
+            ))}</tbody>
           </table>
         </div>
       )}
@@ -1124,233 +1041,173 @@ function Customers() {
   )
 }
 
-/* ══════════════════════════════════
+/* ════════════════════
    EXPENSES
-══════════════════════════════════ */
+════════════════════ */
 function Expenses() {
-  const [expenses,setExpenses]=useState([])
-  const [editing,setEditing]=useState(null)
-  const [loading,setLoading]=useState(true)
-  const [saving,setSaving]=useState(false)
-  const [catFilter,setCatFilter]=useState('all')
-
+  const [expenses,setExpenses]=useState([]),[editing,setEditing]=useState(null),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[catFilter,setCatFilter]=useState('all')
   useEffect(()=>{ load() },[])
   async function load() { setLoading(true); const{data}=await supabase.from('expenses').select('*').order('date',{ascending:false}).limit(300); setExpenses(data||[]); setLoading(false) }
   async function save() {
     if(!editing?.description?.trim()||!editing?.amount) return; setSaving(true)
-    const{id,...data}=editing
-    id?await supabase.from('expenses').update(data).eq('id',id):await supabase.from('expenses').insert({...data,date:new Date().toISOString()})
+    const{id,...data}=editing; id?await supabase.from('expenses').update(data).eq('id',id):await supabase.from('expenses').insert({...data,date:editing.date||new Date().toISOString()})
     setSaving(false); setEditing(null); load()
   }
   async function del(id) { if(!confirm('Delete?')) return; await supabase.from('expenses').delete().eq('id',id); load() }
-
   const cats=['all',...new Set(expenses.map(e=>e.category).filter(Boolean))]
   const shown=catFilter==='all'?expenses:expenses.filter(e=>e.category===catFilter)
-  const total=shown.reduce((a,e)=>a+Number(e.amount||0),0)
+  const total=expenses.reduce((a,e)=>a+Number(e.amount||0),0)
   const monthTotal=expenses.filter(e=>e.date?.startsWith(today().slice(0,7))).reduce((a,e)=>a+Number(e.amount||0),0)
-
   return (
     <div>
-      {editing&&(
-        <Modal title={editing.id?'Edit Expense':'New Expense'} onClose={()=>setEditing(null)}>
-          <div style={{display:'grid',gap:12}}>
-            <F label="Description *" value={editing.description} onChange={v=>setEditing({...editing,description:v})} placeholder="e.g. Rent" required/>
-            <N label="Amount (GH₵) *" value={editing.amount} onChange={v=>setEditing({...editing,amount:v})} required/>
-            <F label="Category" value={editing.category} onChange={v=>setEditing({...editing,category:v})} placeholder="e.g. Operations, Logistics"/>
-            <F label="Notes" value={editing.notes} onChange={v=>setEditing({...editing,notes:v})} placeholder="Additional notes"/>
-            <div><label style={s.label}>Date</label><input type="date" value={editing.date?.slice(0,10)||today()} onChange={e=>setEditing({...editing,date:e.target.value})} style={s.input}/></div>
-            <div style={{display:'flex',gap:8,paddingTop:8}}>
-              <button onClick={save} disabled={saving} style={{...s.btn,flex:1,justifyContent:'center',opacity:saving?0.5:1}}>{saving?'Saving…':'Save'}</button>
-              <button onClick={()=>setEditing(null)} style={{...s.btnGhost,flex:1,justifyContent:'center'}}>Cancel</button>
+      {editing&&<Modal title={editing.id?'Edit Expense':'New Expense'} onClose={()=>setEditing(null)} footer={<><button className="btn-primary" onClick={save} disabled={saving}>{saving?'Saving…':'Save'}</button><button className="btn-secondary" onClick={()=>setEditing(null)}>Cancel</button></>}>
+        <Field label="Description" value={editing.description} onChange={v=>setEditing({...editing,description:v})} placeholder="e.g. Monthly rent" required/>
+        <NumField label="Amount (GH₵)" value={editing.amount} onChange={v=>setEditing({...editing,amount:v})} required/>
+        <Field label="Category" value={editing.category} onChange={v=>setEditing({...editing,category:v})} placeholder="e.g. Rent, Logistics"/>
+        <Field label="Notes" value={editing.notes} onChange={v=>setEditing({...editing,notes:v})} placeholder="Additional notes"/>
+        <div className="field"><label>Date</label><input type="date" className="field-input" value={editing.date?.slice(0,10)||today()} onChange={e=>setEditing({...editing,date:e.target.value})}/></div>
+      </Modal>}
+      <div className="page-header">
+        <div><div className="page-title">Expenses</div><div className="page-sub">This month: <strong style={{color:'#ef4444'}}>{ghs(monthTotal)}</strong> · All time: {ghs(total)}</div></div>
+        <button className="btn-primary" onClick={()=>setEditing({description:'',amount:'',category:'',notes:'',date:today()})}>+ Add Expense</button>
+      </div>
+      <div className="filter-tabs" style={{marginBottom:14}}>
+        {cats.map(c=><button key={c} className={`filter-tab${catFilter===c?' active':''}`} onClick={()=>setCatFilter(c)}>{c==='all'?'All Categories':c}</button>)}
+      </div>
+      {loading?<Spinner/>:shown.length===0?<Empty text="No expenses."/>:(
+        <div className="panel" style={{overflow:'hidden'}}>
+          {shown.map(e=>(
+            <div key={e.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
+              <div><div style={{fontSize:14,fontWeight:700}}>{e.description}</div><div style={{fontSize:11,color:'#aaa'}}>{e.category&&`${e.category} · `}{fmtDate(e.date)}{e.notes&&` · ${e.notes}`}</div></div>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <span style={{fontSize:17,fontWeight:800,color:'#ef4444'}}>{ghs(e.amount)}</span>
+                <button className="btn-secondary btn-sm" onClick={()=>setEditing({...e})}>Edit</button>
+                <button className="btn-danger btn-sm" onClick={()=>del(e.id)}>Del</button>
+              </div>
             </div>
-          </div>
-        </Modal>
+          ))}
+        </div>
       )}
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:16}}>
-        <div>
-          <h1 style={s.sectionTitle}>Expenses</h1>
-          <p style={{fontSize:12,color:'#aaa'}}>This month: <strong style={{color:'#e53e3e'}}>{ghs(monthTotal)}</strong> · All time: {ghs(expenses.reduce((a,e)=>a+Number(e.amount||0),0))}</p>
-        </div>
-        <button onClick={()=>setEditing({description:'',amount:'',category:'',notes:'',date:today()})} style={s.btn}>+ Add Expense</button>
-      </div>
-      <div style={{display:'flex',gap:6,marginBottom:12,flexWrap:'wrap'}}>
-        {cats.map(c=><button key={c} onClick={()=>setCatFilter(c)} style={catFilter===c?s.btn:s.btnGhost}>{c==='all'?'All':c}</button>)}
-      </div>
-      {loading?<Spinner/>:shown.length===0?<Empty text="No expenses recorded."/>:shown.map(e=>(
-        <div key={e.id} style={s.card}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <div>
-              <div style={{fontSize:14,fontWeight:600}}>{e.description}</div>
-              <div style={{fontSize:11,color:'#aaa',marginTop:2}}>{e.category&&`${e.category} · `}{fmtDate(e.date)}</div>
-              {e.notes&&<div style={{fontSize:11,color:'#bbb'}}>{e.notes}</div>}
-            </div>
-            <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <span style={{fontSize:16,fontWeight:700,color:'#e53e3e'}}>{ghs(e.amount)}</span>
-              <button onClick={()=>setEditing({...e})} style={s.btnGhostSm}>Edit</button>
-              <button onClick={()=>del(e.id)} style={{...s.btnGhostSm,color:'#e53e3e',borderColor:'#fecaca'}}>Del</button>
-            </div>
-          </div>
-        </div>
-      ))}
     </div>
   )
 }
 
-/* ══════════════════════════════════
+/* ════════════════════
    REPORTS
-══════════════════════════════════ */
+════════════════════ */
 function Reports() {
-  const [data,setData]=useState(null)
-  const [period,setPeriod]=useState('month')
-  const [loading,setLoading]=useState(true)
-
+  const [data,setData]=useState(null),[period,setPeriod]=useState('month'),[loading,setLoading]=useState(true)
   useEffect(()=>{ load() },[period])
   async function load() {
     setLoading(true)
-    const now=new Date()
-    let from
-    if(period==='today') from=now.toISOString().slice(0,10)
-    else if(period==='week') { const d=new Date(now); d.setDate(d.getDate()-7); from=d.toISOString() }
-    else if(period==='month') { from=now.toISOString().slice(0,7) }
-    else { from=now.getFullYear()+'' }
-
-    const filter=period==='today'?q=>q.gte('date',from):period==='month'?q=>q.gte('date',from+'-01'):period==='year'?q=>q.gte('date',from+'-01-01'):q=>q.gte('date',from)
-
+    const now=new Date(),t=today()
+    const from=period==='today'?t:period==='week'?new Date(now.setDate(now.getDate()-7)).toISOString().slice(0,10):period==='month'?t.slice(0,7)+'-01':t.slice(0,4)+'-01-01'
     const[{data:sales},{data:expenses},{data:orders}]=await Promise.all([
-      filter(supabase.from('sales').select('total,profit,payment,date').eq('voided',false)),
-      filter(supabase.from('expenses').select('amount,category,date')),
-      filter(supabase.from('whatsapp_orders').select('total,status,date')),
+      supabase.from('sales').select('total,profit,payment,date').eq('voided',false).gte('date',from),
+      supabase.from('expenses').select('amount,category,date').gte('date',from),
+      supabase.from('whatsapp_orders').select('total,status,date').gte('date',from),
     ])
-    const s=sales||[], e=expenses||[], o=orders||[]
-    const rev=s.reduce((a,x)=>a+Number(x.total||0),0)
-    const profit=s.reduce((a,x)=>a+Number(x.profit||0),0)
-    const exp=e.reduce((a,x)=>a+Number(x.amount||0),0)
-
+    const s=sales||[],e=expenses||[],o=orders||[]
+    const rev=s.reduce((a,x)=>a+Number(x.total||0),0),profit=s.reduce((a,x)=>a+Number(x.profit||0),0),exp=e.reduce((a,x)=>a+Number(x.amount||0),0)
     const byPay=s.reduce((a,x)=>{ a[x.payment]=(a[x.payment]||0)+Number(x.total||0); return a },{})
     const byCat=e.reduce((a,x)=>{ a[x.category||'Other']=(a[x.category||'Other']||0)+Number(x.amount||0); return a },{})
     const onlineRev=o.filter(x=>['Paid','Completed'].includes(x.status)).reduce((a,x)=>a+Number(x.total||0),0)
-
-    setData({revenue:rev,profit,expenses:exp,net:profit-exp,sales:s.length,orders:o.length,onlineRev,byPay,byCat})
-    setLoading(false)
+    setData({revenue:rev,profit,expenses:exp,net:profit-exp,sales:s.length,orders:o.length,onlineRev,byPay,byCat}); setLoading(false)
   }
-
   return (
     <div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-        <h1 style={s.sectionTitle}>Reports</h1>
-        <div style={{display:'flex',gap:6}}>
-          {[['today','Today'],['week','This Week'],['month','This Month'],['year','This Year']].map(([v,l])=>(
-            <button key={v} onClick={()=>setPeriod(v)} style={period===v?s.btn:s.btnGhost}>{l}</button>
+      <div className="page-header">
+        <div><div className="page-title">Reports</div><div className="page-sub">Business performance overview</div></div>
+        <div className="filter-tabs">
+          {[['today','Today'],['week','Week'],['month','Month'],['year','Year']].map(([v,l])=>(
+            <button key={v} className={`filter-tab${period===v?' active':''}`} onClick={()=>setPeriod(v)}>{l}</button>
           ))}
         </div>
       </div>
-      {loading?<Spinner/>:!data?null:(
-        <>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:12,marginBottom:20}}>
-            <StatCard label="Revenue" value={ghs(data.revenue)} sub={`${data.sales} POS sales`}/>
-            <StatCard label="Online Revenue" value={ghs(data.onlineRev)} sub={`${data.orders} orders`} color="#0f4c81"/>
-            <StatCard label="Gross Profit" value={ghs(data.profit)} sub="Before expenses" color="#065f46"/>
-            <StatCard label="Expenses" value={ghs(data.expenses)} sub="Recorded" color="#7c3aed"/>
-            <StatCard label="Net Profit" value={ghs(data.net)} sub="After expenses" color={data.net>=0?'#14532d':'#7f1d1d'}/>
-          </div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:12}}>
-            <div style={s.card}>
-              <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Sales by Payment Method</div>
+      {loading?<Spinner/>:!data?null:<>
+        <div className="stat-grid">
+          <StatCard label="POS Revenue" value={ghs(data.revenue)} sub={`${data.sales} sales`}/>
+          <StatCard label="Online Revenue" value={ghs(data.onlineRev)} sub={`${data.orders} orders`} variant="blue"/>
+          <StatCard label="Gross Profit" value={ghs(data.profit)} sub="Before expenses" variant="green"/>
+          <StatCard label="Expenses" value={ghs(data.expenses)} sub="Recorded" variant="red"/>
+          <StatCard label="Net Profit" value={ghs(data.net)} sub="After expenses" variant={data.net>=0?'green':'red'}/>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:16}}>
+          <div className="panel">
+            <div className="panel-header"><span className="panel-title">Revenue by Payment Method</span></div>
+            <div className="panel-body">
               {Object.entries(data.byPay).sort((a,b)=>b[1]-a[1]).map(([k,v])=>(
-                <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid #f5f5f5',fontSize:13}}>
-                  <span style={{color:'#666'}}>{k}</span><span style={{fontWeight:600}}>{ghs(v)}</span>
+                <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid #f5f5f5'}}>
+                  <span style={{fontSize:13,color:'#555',fontWeight:600}}>{k}</span>
+                  <span style={{fontSize:14,fontWeight:800,color:'#0d1b3e'}}>{ghs(v)}</span>
                 </div>
               ))}
-            </div>
-            <div style={s.card}>
-              <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Expenses by Category</div>
-              {Object.keys(data.byCat).length===0?<p style={{fontSize:12,color:'#aaa'}}>No expenses.</p>:Object.entries(data.byCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>(
-                <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid #f5f5f5',fontSize:13}}>
-                  <span style={{color:'#666'}}>{k}</span><span style={{fontWeight:700,color:'#e53e3e'}}>{ghs(v)}</span>
-                </div>
-              ))}
+              {Object.keys(data.byPay).length===0&&<p style={{color:'#aaa',fontSize:13}}>No sales in this period.</p>}
             </div>
           </div>
-        </>
-      )}
+          <div className="panel">
+            <div className="panel-header"><span className="panel-title">Expenses by Category</span></div>
+            <div className="panel-body">
+              {Object.entries(data.byCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>(
+                <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid #f5f5f5'}}>
+                  <span style={{fontSize:13,color:'#555',fontWeight:600}}>{k}</span>
+                  <span style={{fontSize:14,fontWeight:800,color:'#ef4444'}}>{ghs(v)}</span>
+                </div>
+              ))}
+              {Object.keys(data.byCat).length===0&&<p style={{color:'#aaa',fontSize:13}}>No expenses in this period.</p>}
+            </div>
+          </div>
+        </div>
+      </>}
     </div>
   )
 }
 
-/* ══════════════════════════════════
+/* ════════════════════
    STAFF
-══════════════════════════════════ */
+════════════════════ */
 function Staff() {
-  const [staff,setStaff]=useState([])
-  const [modal,setModal]=useState(false)
+  const [staff,setStaff]=useState([]),[modal,setModal]=useState(false),[saving,setSaving]=useState(false),[loading,setLoading]=useState(true)
   const [form,setForm]=useState({name:'',role:'',phone:'',pin:'',active:true})
-  const [saving,setSaving]=useState(false)
-  const [loading,setLoading]=useState(true)
-
   useEffect(()=>{ load() },[])
   async function load() { setLoading(true); const{data}=await supabase.from('staff').select('*').order('name'); setStaff(data||[]); setLoading(false) }
   async function save() {
     if(!form.name.trim()) return; setSaving(true)
-    const{id,...data}=form
-    id?await supabase.from('staff').update(data).eq('id',id):await supabase.from('staff').insert({...data,created_at:new Date().toISOString()})
+    const{id,...data}=form; id?await supabase.from('staff').update(data).eq('id',id):await supabase.from('staff').insert({...data,created_at:new Date().toISOString()})
     setSaving(false); setModal(false); setForm({name:'',role:'',phone:'',pin:'',active:true}); load()
   }
-  async function toggleActive(id,active) { await supabase.from('staff').update({active:!active}).eq('id',id); load() }
-
   return (
     <div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-        <div><h1 style={s.sectionTitle}>Staff</h1><p style={{fontSize:12,color:'#aaa'}}>{staff.filter(s=>s.active).length} active staff members</p></div>
-        <button onClick={()=>setModal(true)} style={s.btn}>+ Add Staff</button>
+      {modal&&<Modal title={form.id?'Edit Staff':'Add Staff Member'} onClose={()=>setModal(false)} footer={<><button className="btn-primary" onClick={save} disabled={saving||!form.name.trim()}>{saving?'Saving…':'Save'}</button><button className="btn-secondary" onClick={()=>setModal(false)}>Cancel</button></>}>
+        <Field label="Full Name" value={form.name} onChange={v=>setForm({...form,name:v})} placeholder="e.g. Ama Mensah" required/>
+        <Select label="Role" value={form.role} onChange={v=>setForm({...form,role:v})} options={['Manager','Cashier','Sales Rep','Delivery','Other']}/>
+        <Field label="Phone" value={form.phone} onChange={v=>setForm({...form,phone:v})} placeholder="0XX XXX XXXX"/>
+        <Field label="POS PIN" value={form.pin} onChange={v=>setForm({...form,pin:v})} placeholder="4-digit PIN" type="password"/>
+        <Toggle on={form.active} onToggle={()=>setForm({...form,active:!form.active})} label="Active" sub="Staff member can access the system"/>
+      </Modal>}
+      <div className="page-header">
+        <div><div className="page-title">Staff</div><div className="page-sub">{staff.filter(s=>s.active).length} active members</div></div>
+        <button className="btn-primary" onClick={()=>{setForm({name:'',role:'',phone:'',pin:'',active:true});setModal(true)}}>+ Add Staff</button>
       </div>
-      {modal&&(
-        <Modal title={form.id?'Edit Staff':'Add Staff Member'} onClose={()=>setModal(false)}>
-          <div style={{display:'grid',gap:12}}>
-            <F label="Full Name *" value={form.name} onChange={v=>setForm({...form,name:v})} placeholder="e.g. Ama Mensah" required/>
-            <Sel label="Role" value={form.role} onChange={v=>setForm({...form,role:v})} options={['Manager','Cashier','Sales Rep','Delivery','Other']}/>
-            <F label="Phone" value={form.phone} onChange={v=>setForm({...form,phone:v})} placeholder="0XX XXX XXXX"/>
-            <F label="PIN (for POS)" value={form.pin} onChange={v=>setForm({...form,pin:v})} placeholder="4-digit PIN" type="password"/>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',background:'#fafafa',borderRadius:6}}>
-              <span style={{fontSize:13,fontWeight:500}}>Active</span>
-              <button type="button" onClick={()=>setForm({...form,active:!form.active})}
-                style={{width:44,height:24,borderRadius:12,background:form.active?'#1a1a2e':'#ddd',border:'none',cursor:'pointer',position:'relative',transition:'background .2s'}}>
-                <span style={{position:'absolute',top:3,left:form.active?22:3,width:18,height:18,background:'#fff',borderRadius:'50%',transition:'left .2s',display:'block'}}/>
-              </button>
-            </div>
-            <div style={{display:'flex',gap:8,paddingTop:8}}>
-              <button onClick={save} disabled={saving||!form.name.trim()} style={{...s.btn,flex:1,justifyContent:'center',opacity:saving?0.5:1}}>Save</button>
-              <button onClick={()=>setModal(false)} style={{...s.btnGhost,flex:1,justifyContent:'center'}}>Cancel</button>
-            </div>
-          </div>
-        </Modal>
-      )}
       {loading?<Spinner/>:staff.length===0?<Empty text="No staff members."/>:(
-        <div style={{background:'#fff',border:'1px solid #ebebeb',borderRadius:8,overflow:'hidden'}}>
-          <table style={{width:'100%',borderCollapse:'collapse'}}>
-            <thead><tr><th style={s.th}>Name</th><th style={s.th}>Role</th><th style={s.th}>Phone</th><th style={s.th}>Status</th><th style={{...s.th,textAlign:'right'}}>Actions</th></tr></thead>
-            <tbody>
-              {staff.map(m=>(
-                <tr key={m.id}>
-                  <td style={s.td}><span style={{fontWeight:600}}>{m.name}</span></td>
-                  <td style={s.td}><span style={{fontSize:12,color:'#666'}}>{m.role||'—'}</span></td>
-                  <td style={s.td}><span style={{fontSize:12}}>{m.phone||'—'}</span></td>
-                  <td style={s.td}><Badge status={m.active?'Active':'Inactive'}/></td>
-                  <td style={{...s.td,textAlign:'right'}}>
-                    <div style={{display:'flex',gap:4,justifyContent:'flex-end'}}>
-                      <button onClick={()=>{setForm({...m});setModal(true)}} style={s.btnGhostSm}>Edit</button>
-                      <button onClick={()=>toggleActive(m.id,m.active)} style={s.btnGhostSm}>{m.active?'Deactivate':'Activate'}</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+        <div className="panel" style={{overflow:'hidden'}}>
+          <table className="data-table">
+            <thead><tr><th>Name</th><th>Role</th><th>Phone</th><th>Status</th><th style={{textAlign:'right'}}>Actions</th></tr></thead>
+            <tbody>{staff.map(m=>(
+              <tr key={m.id}>
+                <td><span style={{fontWeight:700}}>{m.name}</span></td>
+                <td style={{color:'#888',fontSize:12}}>{m.role||'—'}</td>
+                <td style={{fontSize:12}}>{m.phone||'—'}</td>
+                <td><Badge status={m.active?'Active':'Inactive'}/></td>
+                <td><div style={{display:'flex',gap:4,justifyContent:'flex-end'}}>
+                  <button className="btn-secondary btn-sm" onClick={()=>{setForm({...m});setModal(true)}}>Edit</button>
+                  <button className="btn-secondary btn-sm" onClick={async()=>{ await supabase.from('staff').update({active:!m.active}).eq('id',m.id); load() }}>{m.active?'Deactivate':'Activate'}</button>
+                </div></td>
+              </tr>
+            ))}</tbody>
           </table>
         </div>
       )}
     </div>
   )
 }
-
-/* ── UTILS ── */
-const Spinner = () => <div style={{textAlign:'center',padding:40,color:'#aaa',fontSize:13}}>Loading…</div>
-const Empty = ({text}) => <div style={{textAlign:'center',padding:'48px 20px',color:'#bbb',fontSize:13}}>{text}</div>
