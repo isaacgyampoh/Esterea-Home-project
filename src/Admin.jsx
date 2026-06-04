@@ -851,7 +851,7 @@ function Products() {
           </div>
           <div style={{border:'1px solid #f0f0f0',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
             <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--ink-3)',marginBottom:12}}>Pricing</div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+            <div className="form-grid-2">
               <NumField label="Selling Price (GH₵)" value={editing.price} onChange={v=>setEditing({...editing,price:v})} required/>
               <NumField label="Cost Price (GH₵)" value={editing.cost_price} onChange={v=>setEditing({...editing,cost_price:v})}/>
             </div>
@@ -859,7 +859,7 @@ function Products() {
           </div>
           <div style={{border:'1px solid #f0f0f0',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
             <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--ink-3)',marginBottom:12}}>Stock & Wholesale</div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
+            <div className="form-grid-3">
               <NumField label="Opening Qty" value={editing.quantity} onChange={v=>setEditing({...editing,quantity:v})} step="1"/>
               <NumField label="Wholesale Price" value={editing.wholesale_price} onChange={v=>setEditing({...editing,wholesale_price:v})}/>
               <NumField label="Wholesale Min Qty" value={editing.wholesale_min_qty} onChange={v=>setEditing({...editing,wholesale_min_qty:v})} step="1"/>
@@ -883,7 +883,7 @@ function Products() {
       </div>
       {loading?<Spinner/>:filtered.length===0?<Empty text="No products."/>:(
         <div className="panel" style={{overflow:'hidden'}}>
-          <table className="tbl">
+          <div className="tbl-wrap"><table className="tbl">
             <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Cost</th><th>Stock</th><th>Visibility</th><th style={{textAlign:'right'}}>Actions</th></tr></thead>
             <tbody>
               {filtered.map(p=>{
@@ -918,8 +918,8 @@ function Products() {
                 )
               })}
             </tbody>
-          </table>
-        </div>
+          </table></div>
+$1</div>
       )}
     </div>
   )
@@ -1140,7 +1140,7 @@ function Customers() {
       <div className="search" style={{maxWidth:360,marginBottom:14}}>{I.search}<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name or phone…"/></div>
       {loading?<Spinner/>:shown.length===0?<Empty text="No customers."/>:(
         <div className="panel" style={{overflow:'hidden'}}>
-          <table className="tbl">
+          <div className="tbl-wrap"><table className="tbl">
             <thead><tr><th>Name</th><th>Phone</th><th>Purchases</th><th>Total Spent</th><th>Last Purchase</th><th></th></tr></thead>
             <tbody>{shown.map(c=>(
               <tr key={c.id}>
@@ -1152,8 +1152,8 @@ function Customers() {
                 <td><button className="btn btn-line btn-sm" onClick={()=>setDetail(c)}>View</button></td>
               </tr>
             ))}</tbody>
-          </table>
-        </div>
+          </table></div>
+$1</div>
       )}
     </div>
   )
@@ -1309,7 +1309,7 @@ function Staff() {
       </div>
       {loading?<Spinner/>:staff.length===0?<Empty text="No staff members."/>:(
         <div className="panel" style={{overflow:'hidden'}}>
-          <table className="tbl">
+          <div className="tbl-wrap"><table className="tbl">
             <thead><tr><th>Name</th><th>Role</th><th>Phone</th><th>Status</th><th style={{textAlign:'right'}}>Actions</th></tr></thead>
             <tbody>{staff.map(m=>(
               <tr key={m.id}>
@@ -1323,8 +1323,8 @@ function Staff() {
                 </div></td>
               </tr>
             ))}</tbody>
-          </table>
-        </div>
+          </table></div>
+$1</div>
       )}
     </div>
   )
