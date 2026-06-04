@@ -106,7 +106,7 @@ function Modal({title,onClose,children,wide,footer}) {
   useEffect(()=>{ document.body.style.overflow='hidden'; return()=>{ document.body.style.overflow='' } },[])
   return (
     <div className="ovl" onClick={e=>e.target.classList.contains('ovl')&&onClose()}>
-      <div className="modal" style={{maxWidth:wide?680:480}}>
+      <div className={`modal${wide?' wide':''}`}>
         <div className="modal-head">
           <span className="modal-title">{title}</span>
           <button className="modal-x" onClick={onClose}>{I.x}</button>
