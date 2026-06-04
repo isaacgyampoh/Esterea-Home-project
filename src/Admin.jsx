@@ -30,6 +30,8 @@ const I = {
   star: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3l2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8L6.6 19.6l1-6L3.3 9.4l6-.9z"/></svg>,
   check: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6L9 17l-5-5"/></svg>,
   doc: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 2h9l5 5v15H6z"/><path d="M15 2v5h5"/></svg>,
+  menu: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h18M3 12h18M3 18h18"/></svg>,
+  chev: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>,
 }
 
 const SUPABASE_URL  = 'https://tgdtjfquwbtvfsdnvvgm.supabase.co'
@@ -131,7 +133,7 @@ function ImgUpload({value,onChange}) {
     <div className="field">
       <label>Product Image</label>
       {value&&!busy&&(
-        <div style={{position:'relative',height:130,background:'var(--panel-2)',marginBottom:8,overflow:'hidden',borderRadius:12}}>
+        <div style={{position:'relative',height:130,background:'var(--line-2)',marginBottom:8,overflow:'hidden',borderRadius:12}}>
           <img src={cdn(value,400)} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
           <div style={{position:'absolute',inset:0,background:'rgba(13,27,62,.5)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,opacity:0,transition:'opacity .15s'}}
             onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=0}>
@@ -144,9 +146,9 @@ function ImgUpload({value,onChange}) {
         <div onClick={()=>!busy&&ref.current?.click()}
           onDragOver={e=>{e.preventDefault();setDrag(true)}} onDragLeave={()=>setDrag(false)}
           onDrop={e=>{e.preventDefault();setDrag(false);handle(e.dataTransfer.files[0])}}
-          style={{height:90,border:`2px dashed ${drag?'var(--brass)':'var(--line)'}`,background:drag?'var(--brass-bg)':'var(--bg)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:12,marginBottom:8,transition:'all .15s'}}>
+          style={{height:90,border:`2px dashed ${drag?'var(--ink)':'var(--line)'}`,background:drag?'var(--line-2)':'var(--bg)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:12,marginBottom:8,transition:'all .15s'}}>
           {busy
-            ? <div style={{textAlign:'center'}}><div style={{fontSize:12,color:'var(--ink-2)',marginBottom:6}}>Uploading {prog}%</div><div style={{width:120,height:3,background:'var(--line)',borderRadius:2}}><div style={{height:'100%',background:'var(--brass)',width:`${prog}%`,transition:'width .2s',borderRadius:2}}/></div></div>
+            ? <div style={{textAlign:'center'}}><div style={{fontSize:12,color:'var(--ink-2)',marginBottom:6}}>Uploading {prog}%</div><div style={{width:120,height:3,background:'var(--line)',borderRadius:2}}><div style={{height:'100%',background:'var(--ink)',width:`${prog}%`,transition:'width .2s',borderRadius:2}}/></div></div>
             : <><div style={{fontSize:13,color:'var(--ink-2)',fontWeight:500}}>Drop image or click to upload</div><div style={{fontSize:11,color:'var(--ink-3)',marginTop:3}}>JPG / PNG / WebP · max 10 MB</div></>
           }
         </div>
@@ -159,20 +161,16 @@ function ImgUpload({value,onChange}) {
   )
 }
 
-/* ── Stat Card ── */
-/* ── Metric (used in a hairline strip) ── */
-const Metric = ({label,value,sub,icon}) => (
-  <div className="metric">
-    <div className="metric-top">
-      {icon&&<span className="metric-icon">{icon}</span>}
-      <span className="metric-label">{label}</span>
-    </div>
-    <div className="metric-value">{value}</div>
-    {sub&&<div className="metric-sub">{sub}</div>}
+/* ── Metric → renders as a white sub-card ── */
+const Metric = ({label,value,sub}) => (
+  <div className="subcard">
+    <div className="subcard-label">{label}</div>
+    <div className="subcard-val">{value}</div>
+    {sub&&<div style={{fontSize:11,color:'var(--ink-3)',marginTop:6}}>{sub}</div>}
   </div>
 )
 const MetricStrip = ({cols,children}) => (
-  <div className="metric-strip" style={{gridTemplateColumns:`repeat(${cols},1fr)`}}>{children}</div>
+  <div className="subcards" style={{gridTemplateColumns:`repeat(${cols},1fr)`,marginBottom:18}}>{children}</div>
 )
 
 const Spinner = () => <div className="spin">Loading…</div>
@@ -242,57 +240,61 @@ export default function Admin() {
     </div>
   )
 
+  const flatNav = NAV_SECTIONS.flatMap(s=>s.items)
+
   return (
     <div className="admin-root">
-      {sideOpen&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.35)',zIndex:99}} onClick={()=>setSideOpen(false)}/>}
+      {/* ICON RAIL */}
+      <div className="rail">
+        <div className="rail-logo" onClick={()=>setSideOpen(true)}>E</div>
+        <div className="rail-icons">
+          {flatNav.map(item=>(
+            <button key={item.id} className={`rail-btn${tab===item.id?' active':''}`} onClick={()=>setTab(item.id)} title={item.label}>
+              {item.icon}
+              {item.id==='invoices'&&<span className="rail-dot"/>}
+            </button>
+          ))}
+        </div>
+        <div className="rail-foot">
+          <button className="rail-btn" onClick={()=>setSideOpen(true)} title="Menu">{I.menu}</button>
+          <div className="rail-avatar">A</div>
+          <button className="rail-btn" onClick={logout} title="Sign out">{I.out}</button>
+        </div>
+      </div>
 
-      {/* SIDEBAR */}
-      <aside className="admin-sidebar" style={{transform:sideOpen?'translateX(0)':undefined}}>
-        <div className="sidebar-logo">
-          <div className="sidebar-logo-mark">E</div>
-          <div>
-            <div className="sidebar-logo-name">Esterea Home</div>
-            <div className="sidebar-logo-sub">Management</div>
+      {/* EXPANDED DRAWER */}
+      {sideOpen&&<>
+        <div className="drawer-scrim" onClick={()=>setSideOpen(false)}/>
+        <div className="drawer">
+          <div className="drawer-head">
+            <div className="drawer-logo">E</div>
+            <div className="drawer-brand">Esterea Home</div>
+          </div>
+          <nav className="drawer-nav">
+            {NAV_SECTIONS.map(section=>(
+              <div key={section.label}>
+                <div className="drawer-sec">{section.label}</div>
+                {section.items.map(item=>(
+                  <button key={item.id} className={`drawer-item${tab===item.id?' active':''}`} onClick={()=>{setTab(item.id);setSideOpen(false)}}>
+                    {item.icon}{item.label}
+                    {item.id==='invoices'&&<span className="drawer-badge">!</span>}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </nav>
+          <div className="drawer-foot">
+            <a href="/" target="_blank" rel="noreferrer" className="drawer-foot-btn" style={{textDecoration:'none'}}>{I.store} View Store</a>
+            <div className="drawer-foot-btn acct"><div style={{width:24,height:24,borderRadius:6,background:'rgba(255,255,255,.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700}}>A</div> Admin</div>
+            <button className="drawer-foot-btn" onClick={logout}>{I.out} Sign out</button>
           </div>
         </div>
-        <nav className="sidebar-nav">
-          {NAV_SECTIONS.map(section=>(
-            <div key={section.label}>
-              <div className="sidebar-section-label">{section.label}</div>
-              {section.items.map(item=>(
-                <button key={item.id} className={`nav-item${tab===item.id?' active':''}`}
-                  onClick={()=>{setTab(item.id);setSideOpen(false)}}>
-                  {item.icon}
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          ))}
-        </nav>
-        <div className="sidebar-footer">
-          <a href="/" target="_blank" rel="noreferrer" className="sidebar-footer-btn" style={{textDecoration:'none'}}>
-            {I.store} View Store
-          </a>
-          <button className="sidebar-footer-btn" onClick={logout}>
-            {I.out} Sign out
-          </button>
-        </div>
-      </aside>
+      </>}
 
       {/* MAIN */}
-      <div className="admin-main admin-content-wrap">
-        <div className="admin-topbar">
-          <button className="topbar-hamburger" onClick={()=>setSideOpen(o=>!o)}>
-            <span style={{width:18}}/><span style={{width:14}}/><span style={{width:18}}/>
-          </button>
-          <div>
-            <div className="topbar-eyebrow">{NAV_SECTIONS.find(s=>s.items.some(i=>i.id===tab))?.label}</div>
-            <div className="topbar-title">{activeItem?.label}</div>
-          </div>
-          <span className="topbar-meta">{new Date().toLocaleDateString('en-GH',{weekday:'long',day:'numeric',month:'short',year:'numeric'})}</span>
-        </div>
-        <div className="admin-content fade" key={tab}>
-          {tab==='dashboard' && <Dashboard/>}
+      <div className="main">
+        <div className="content fade" key={tab}>
+          {tab==='dashboard' && <Dashboard onNav={setTab}/>}
           {tab==='pos'       && <POS/>}
           {tab==='invoices'  && <Invoices/>}
           {tab==='receipts'  && <Receipts/>}
@@ -314,82 +316,159 @@ export default function Admin() {
 /* ════════════════════
    DASHBOARD
 ════════════════════ */
-function Dashboard() {
-  const [stats,setStats]=useState(null)
+function Dashboard({onNav}) {
+  const [d,setD]=useState(null)
   useEffect(()=>{ load() },[])
   async function load() {
-    const t=today()
-    const [{count:pCount},{data:sales},{data:expenses},{data:orders}] = await Promise.all([
+    const t=today(), now=new Date()
+    const weekAgo=new Date(now); weekAgo.setDate(now.getDate()-6); const weekStart=weekAgo.toISOString().slice(0,10)
+    const monthStart=t.slice(0,7)
+    const [{count:pCount},{data:prods},{data:sales},{data:expenses}] = await Promise.all([
       supabase.from('products').select('*',{count:'exact',head:true}),
-      supabase.from('sales').select('total,profit,date').eq('voided',false),
+      supabase.from('products').select('name,quantity,price,cost_price,category,image'),
+      supabase.from('sales').select('total,profit,payment,date,items,receipt_no,customer_name').eq('voided',false).order('date',{ascending:false}),
       supabase.from('expenses').select('amount,date'),
-      supabase.from('whatsapp_orders').select('total,status,date,created_at'),
     ])
-    const s=sales||[],e=expenses||[],o=orders||[]
-    const tSales=s.filter(x=>x.date?.startsWith(t))
-    const rev=s.reduce((a,x)=>a+Number(x.total||0),0)
-    const profit=s.reduce((a,x)=>a+Number(x.profit||0),0)
-    const exp=e.reduce((a,x)=>a+Number(x.amount||0),0)
-    const {count:cCount}=await supabase.from('customers').select('*',{count:'exact',head:true}).catch(()=>({count:0}))
-    setStats({products:pCount||0,todayRev:tSales.reduce((a,x)=>a+Number(x.total||0),0),todaySales:tSales.length,revenue:rev,profit,expenses:exp,net:profit-exp,orders:o.length,pending:o.filter(x=>x.status==='Pending').length,paid:o.filter(x=>['Paid','Completed'].includes(x.status)).length,onlineRev:o.filter(x=>['Paid','Completed'].includes(x.status)).reduce((a,x)=>a+Number(x.total||0),0),customers:cCount||0})
+    const s=sales||[], e=expenses||[], pr=prods||[]
+    const inDay=x=>x.date?.startsWith(t)
+    const inWeek=x=>x.date>=weekStart
+    const inMonth=x=>x.date?.startsWith(monthStart)
+    const sum=(arr,k='total')=>arr.reduce((a,x)=>a+Number(x[k]||0),0)
+    const todaySales=s.filter(inDay), weekSales=s.filter(inWeek), monthSales=s.filter(inMonth)
+    const todayProfit=sum(todaySales,'profit')
+    const monthExp=sum(e.filter(inMonth),'amount')
+    // 7-day chart
+    const days=[]
+    for(let i=6;i>=0;i--){ const dd=new Date(now); dd.setDate(now.getDate()-i); const key=dd.toISOString().slice(0,10); days.push({key,label:dd.toLocaleDateString('en-GH',{weekday:'short'}),val:sum(s.filter(x=>x.date?.startsWith(key)),'total'),today:i===0}) }
+    // payment split this month
+    const pays={Cash:0,MoMo:0,Paystack:0,Split:0}
+    monthSales.forEach(x=>{ const p=x.payment||'Cash'; pays[p]=(pays[p]||0)+Number(x.total||0) })
+    const payTotal=Object.values(pays).reduce((a,b)=>a+b,0)||1
+    // stock value & out of stock
+    const stockVal=pr.reduce((a,x)=>a+Number(x.cost_price||x.price||0)*Number(x.quantity||0),0)
+    const outCount=pr.filter(x=>(x.quantity||0)===0).length
+    const lowStock=pr.filter(x=>(x.quantity||0)<=10).sort((a,b)=>(a.quantity||0)-(b.quantity||0)).slice(0,6)
+    const lowCount=pr.filter(x=>(x.quantity||0)<=10).length
+    const monthRev=sum(monthSales)
+    const profitMargin=monthRev>0?(sum(monthSales,'profit')/monthRev*100):0
+    setD({
+      today:sum(todaySales), todayCount:todaySales.length,
+      week:sum(weekSales), weekCount:weekSales.length,
+      month:monthRev, monthCount:monthSales.length,
+      allTime:sum(s), allCount:s.length,
+      todayProfit, netToday:todayProfit, profitMargin, stockVal,
+      outCount, days, pays, payTotal, monthExp, netProfit:sum(monthSales,'profit')-monthExp,
+      recent:s.slice(0,6), lowStock, lowCount,
+    })
   }
-  if(!stats) return <Spinner/>
+  if(!d) return <Spinner/>
+  const maxBar=Math.max(...d.days.map(x=>x.val),1)
+  const hour=new Date().getHours()
+  const greeting=hour<12?'Good Morning':hour<17?'Good Afternoon':'Good Evening'
+  const PAYS=[['Cash',d.pays.Cash||0],['MoMo',d.pays.MoMo||0],['Paystack',d.pays.Paystack||0],['Split',d.pays.Split||0]]
+
   return (
     <div>
-      <div className="page-head">
-        <div><div className="page-h1">Dashboard</div><div className="page-desc">{new Date().toLocaleDateString('en-GH',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>
-        <button className="btn btn-line" onClick={load}>{I.refresh} Refresh</button>
+      <div style={{marginBottom:18}}>
+        <div className="greet-h1">{greeting}, Admin</div>
+        <div className="greet-sub">{new Date().toLocaleDateString('en-GH',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
       </div>
-      <MetricStrip cols={4}>
-        <Metric label="Today's Revenue" value={ghs(stats.todayRev)} sub={<><b>{stats.todaySales}</b> POS sales</>} icon={I.coins}/>
-        <Metric label="Total Revenue" value={ghs(stats.revenue)} sub="All-time POS" icon={I.trend}/>
-        <Metric label="Net Profit" value={ghs(stats.net)} sub="After expenses" icon={I.star}/>
-        <Metric label="Total Expenses" value={ghs(stats.expenses)} sub="All recorded" icon={I.expense}/>
-      </MetricStrip>
-      <MetricStrip cols={4}>
-        <Metric label="Products" value={stats.products} sub="In catalogue" icon={I.box}/>
-        <Metric label="Customers" value={stats.customers} sub="Registered" icon={I.users}/>
-        <Metric label="Online Orders" value={stats.orders} sub={<><b>{stats.pending}</b> pending</>} icon={I.invoice}/>
-        <Metric label="Orders Paid" value={stats.paid} sub={ghs(stats.onlineRev)} icon={I.check}/>
-      </MetricStrip>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(320px,1fr))',gap:16}}>
-        <RecentOrders/>
-        <LowStockWidget/>
-      </div>
-    </div>
-  )
-}
-function RecentOrders() {
-  const [orders,setOrders]=useState([])
-  useEffect(()=>{ supabase.from('whatsapp_orders').select('order_no,customer_name,total,status').order('created_at',{ascending:false}).limit(6).then(({data})=>setOrders(data||[])) },[])
-  return (
-    <div className="panel">
-      <div className="panel-head"><span className="panel-title">Recent Online Orders</span></div>
-      {orders.map(o=>(
-        <div key={o.order_no} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
-          <div><div style={{fontSize:13,fontWeight:700}}>{o.customer_name||'Customer'}</div><div style={{fontSize:11,color:'var(--ink-3)',fontFamily:'monospace'}}>{o.order_no}</div></div>
-          <div style={{textAlign:'right',display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}><div style={{fontSize:14,fontWeight:800}}>{ghs(o.total)}</div><Badge status={o.status}/></div>
+
+      {d.outCount>0&&(
+        <div className="alert" onClick={()=>onNav&&onNav('products')}>
+          <span className="alert-num">{d.outCount}</span>
+          <span className="alert-txt">Products out of stock</span>
+          <span className="alert-chev">{I.chev}</span>
         </div>
-      ))}
-      {orders.length===0&&<Empty text="No orders yet."/>}
-    </div>
-  )
-}
-function LowStockWidget() {
-  const [items,setItems]=useState([])
-  useEffect(()=>{ supabase.from('products').select('name,quantity').lte('quantity',10).order('quantity').limit(8).then(({data})=>setItems(data||[])) },[])
-  return (
-    <div className="panel">
-      <div className="panel-head"><span className="panel-title">Low Stock</span></div>
-      {items.length===0?<div style={{padding:'20px',textAlign:'center'}}><span style={{fontSize:13,color:'var(--ink-3)'}}>All stock levels healthy</span></div>:items.map((p,i)=>(
-        <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
-          <div style={{fontSize:13,fontWeight:600}}>{p.name}</div>
-          <div style={{display:'flex',alignItems:'center',gap:8}}>
-            <span style={{fontSize:16,fontWeight:800,color:p.quantity===0?'var(--bad)':p.quantity<=3?'var(--bad)':'var(--warn)'}}>{p.quantity}</span>
-            <Badge status={p.quantity===0?'Out of Stock':p.quantity<=3?'Critical':'Low Stock'}/>
+      )}
+
+      {/* Dark stat cards */}
+      <div className="statcards">
+        <div className="statcard"><div className="statcard-label">Today</div><div className="statcard-val">{ghs(d.today)}</div><div className="statcard-sub">{d.todayCount} sales</div></div>
+        <div className="statcard"><div className="statcard-label">This Week</div><div className="statcard-val">{ghs(d.week)}</div><div className="statcard-sub">{d.weekCount} sales</div></div>
+        <div className="statcard"><div className="statcard-label">This Month</div><div className="statcard-val">{ghs(d.month)}</div><div className="statcard-sub">{d.monthCount} sales</div></div>
+        <div className="statcard"><div className="statcard-label">All Time</div><div className="statcard-val">{ghs(d.allTime)}</div><div className="statcard-sub">{d.allCount} total</div></div>
+      </div>
+
+      {/* White sub cards */}
+      <div className="subcards">
+        <div className="subcard"><div className="subcard-label">Today's Profit</div><div className="subcard-val">{ghs(d.todayProfit)}</div></div>
+        <div className="subcard"><div className="subcard-label">Net Today</div><div className="subcard-val">{ghs(d.netToday)}</div></div>
+        <div className="subcard"><div className="subcard-label">Profit Margin</div><div className={`subcard-val ${d.profitMargin>0?'green':'red'}`}>{d.profitMargin.toFixed(1)}%</div></div>
+        <div className="subcard"><div className="subcard-label">Stock Value</div><div className="subcard-val">{ghs(d.stockVal)}</div></div>
+      </div>
+
+      {/* Chart + Payment split */}
+      <div className="grid-2-wide">
+        <div className="panel panel-pad">
+          <div className="panel-title">Last 7 Days Revenue</div>
+          <div className="chart">
+            {d.days.map((day,i)=>(
+              <div key={i} className="chart-col">
+                <div className="chart-bar-wrap">
+                  <div className="chart-bar" style={{height:`${Math.max(day.val/maxBar*100,1)}%`}}>
+                    {day.val>0&&<span className="chart-bar-val">{day.val.toFixed(0)}</span>}
+                  </div>
+                </div>
+                <div className={`chart-label${day.today?' today':''}`}>{day.label}</div>
+              </div>
+            ))}
           </div>
         </div>
-      ))}
+        <div className="panel panel-pad">
+          <div className="panel-title" style={{marginBottom:16}}>Payment Split (This Month)</div>
+          {PAYS.map(([name,val])=>(
+            <div key={name} className="split-row">
+              <div className="split-top"><span className="split-name">{name}</span><span className="split-val">{ghs(val)} ({(val/d.payTotal*100).toFixed(0)}%)</span></div>
+              <div className="split-bar"><div className="split-fill" style={{width:`${val/d.payTotal*100}%`}}/></div>
+            </div>
+          ))}
+          <div className="split-foot">
+            <div className="split-foot-row"><span className="split-foot-label">Month Expenses</span><span style={{color:'var(--red)',fontWeight:600}}>{ghs(d.monthExp)}</span></div>
+            <div className="split-foot-row"><span className="split-foot-label">Net Profit</span><span style={{color:'var(--green)',fontWeight:600}}>{ghs(d.netProfit)}</span></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick actions */}
+      <div className="panel panel-pad" style={{marginBottom:22}}>
+        <div className="panel-title" style={{marginBottom:14}}>Quick Actions</div>
+        <div className="qa-grid">
+          {[['New Sale','pos'],['Products','products'],['Reports','reports'],['Expenses','expenses'],['Stock Take','stock'],['Receipts','receipts']].map(([l,t])=>(
+            <button key={l} className="qa-btn" onClick={()=>onNav&&onNav(t)}>{l}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent sales + Low stock */}
+      <div className="grid-2">
+        <div className="panel">
+          <div className="panel-head"><span className="panel-title" style={{marginBottom:0}}>Recent Sales</span><button className="panel-link" onClick={()=>onNav&&onNav('receipts')}>View all →</button></div>
+          {d.recent.length===0?<Empty text="No sales yet."/>:d.recent.map((sale,i)=>(
+            <div key={i} className="lrow">
+              <div className="lrow-thumb lrow-thumb-ph">E</div>
+              <div className="lrow-main">
+                <div className="lrow-title">{sale.receipt_no}</div>
+                <div className="lrow-sub">{sale.customer_name||'Walk-in'}</div>
+              </div>
+              <div className="lrow-val">{ghs(sale.total)}</div>
+            </div>
+          ))}
+        </div>
+        <div className="panel">
+          <div className="panel-head"><span className="panel-title" style={{marginBottom:0}}>Low Stock</span><span className="panel-count">{d.lowCount}</span></div>
+          {d.lowStock.length===0?<Empty text="All stock healthy."/>:d.lowStock.map((p,i)=>(
+            <div key={i} className="lrow">
+              {p.image?<img src={cdn(p.image,80)} className="lrow-thumb" alt=""/>:<div className="lrow-thumb lrow-thumb-ph">E</div>}
+              <div className="lrow-main">
+                <div className="lrow-title">{p.name}</div>
+                <div className="lrow-sub">{p.category||'—'}</div>
+              </div>
+              {(p.quantity||0)===0?<span className="lrow-tag-out">OUT</span>:<span className="lrow-qty">{p.quantity}</span>}
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
@@ -444,7 +523,7 @@ function POS() {
             <div style={{fontSize:10,fontFamily:'monospace',color:'var(--ink-3)',marginTop:2}}>{lastReceipt.receipt_no}</div>
           </div>
           {lastReceipt.items.map((it,i)=>(
-            <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'8px 0',borderBottom:'1px solid var(--line-soft)'}}>
+            <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'8px 0',borderBottom:'1px solid var(--line-2)'}}>
               <span>{it.qty}× {it.name}</span><span style={{fontWeight:700}}>{ghs((it.price||0)*it.qty)}</span>
             </div>
           ))}
@@ -452,7 +531,7 @@ function POS() {
           <div style={{display:'flex',justifyContent:'space-between',fontSize:18,fontWeight:800,marginTop:12,padding:'12px 0',borderTop:'2px solid var(--ink)',color:'var(--ink)'}}><span>Total</span><span>{ghs(lastReceipt.total)}</span></div>
           <div style={{fontSize:12,color:'var(--ink-2)',marginTop:4}}>Payment: {lastReceipt.payment}</div>
           {lastReceipt.customer_name&&<div style={{fontSize:12,color:'var(--ink-3)'}}>Customer: {lastReceipt.customer_name}</div>}
-          <div style={{textAlign:'center',fontSize:11,color:'var(--ink-3)',marginTop:20,padding:'12px',background:'var(--panel-2)',borderRadius:10}}>Thank you for shopping with us!</div>
+          <div style={{textAlign:'center',fontSize:11,color:'var(--ink-3)',marginTop:20,padding:'12px',background:'var(--line-2)',borderRadius:10}}>Thank you for shopping with us!</div>
         </Modal>
       )}
       <div className="page-head">
@@ -481,7 +560,7 @@ function POS() {
         {/* Cart */}
         <div className="cart">
           <div className="cart-head">
-            <span className="cart-head-title">Cart {cart.length>0&&<span style={{background:'var(--brass-bg)',color:'var(--brass)',borderRadius:10,padding:'1px 8px',fontSize:11,marginLeft:6}}>{cart.reduce((a,c)=>a+c.qty,0)}</span>}</span>
+            <span className="cart-head-title">Cart {cart.length>0&&<span style={{background:'var(--line-2)',color:'var(--ink)',borderRadius:10,padding:'1px 8px',fontSize:11,marginLeft:6}}>{cart.reduce((a,c)=>a+c.qty,0)}</span>}</span>
             {cart.length>0&&<button onClick={()=>setCart([])} style={{background:'none',border:'none',cursor:'pointer',fontSize:11,color:'rgba(255,255,255,.3)',textDecoration:'underline'}}>Clear</button>}
           </div>
           {cart.length===0
@@ -552,16 +631,16 @@ function Invoices() {
         <Modal title={`Invoice ${detail.order_no}`} onClose={()=>setDetail(null)} footer={<button className="btn btn-line" onClick={()=>setDetail(null)}>Close</button>}>
           <div style={{display:'grid',gap:2}}>
             {[['Customer',detail.customer_name],['Phone',detail.customer_phone],['Date',fmt(detail.date||detail.created_at)],['Address',detail.address],['Notes',detail.notes]].map(([k,v])=>v&&(
-              <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'9px 0',borderBottom:'1px solid var(--line-soft)',fontSize:13}}>
+              <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'9px 0',borderBottom:'1px solid var(--line-2)',fontSize:13}}>
                 <span style={{color:'var(--ink-2)'}}>{k}</span><span style={{fontWeight:600}}>{v}</span>
               </div>
             ))}
-            <div style={{padding:'9px 0',borderBottom:'1px solid var(--line-soft)',display:'flex',justifyContent:'space-between',fontSize:13}}><span style={{color:'var(--ink-2)'}}>Status</span><Badge status={detail.status}/></div>
+            <div style={{padding:'9px 0',borderBottom:'1px solid var(--line-2)',display:'flex',justifyContent:'space-between',fontSize:13}}><span style={{color:'var(--ink-2)'}}>Status</span><Badge status={detail.status}/></div>
           </div>
           <div style={{marginTop:16}}>
             <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:'var(--ink-3)',textTransform:'uppercase',letterSpacing:'.05em'}}>Items</div>
             {(detail.items?(typeof detail.items==='string'?JSON.parse(detail.items):detail.items):[]).map((it,i)=>(
-              <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'8px 0',borderBottom:'1px solid var(--line-soft)'}}>
+              <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'8px 0',borderBottom:'1px solid var(--line-2)'}}>
                 <span>{it.qty}× {it.name}</span><span style={{fontWeight:700}}>{ghs((it.price||0)*it.qty)}</span>
               </div>
             ))}
@@ -641,7 +720,7 @@ function Receipts() {
             <div style={{fontSize:10,fontFamily:'monospace',color:'var(--ink-3)'}}>{detail.receipt_no}</div>
           </div>
           {(detail.items?(typeof detail.items==='string'?JSON.parse(detail.items):detail.items):[]).map((it,i)=>(
-            <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'8px 0',borderBottom:'1px solid var(--line-soft)'}}>
+            <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'8px 0',borderBottom:'1px solid var(--line-2)'}}>
               <span>{it.qty}× {it.name}</span><span style={{fontWeight:700}}>{ghs((it.price||0)*it.qty)}</span>
             </div>
           ))}
@@ -973,11 +1052,11 @@ function StockAdjustInline({product,onDone}) {
   return (
     <div>
       <p style={{fontSize:13,color:'var(--ink-2)',marginBottom:12,fontWeight:500}}>{product.name}</p>
-      <div style={{display:'flex',justifyContent:'space-between',padding:'12px 16px',background:'var(--panel-2)',borderRadius:12,marginBottom:14}}>
+      <div style={{display:'flex',justifyContent:'space-between',padding:'12px 16px',background:'var(--line-2)',borderRadius:12,marginBottom:14}}>
         <span style={{fontSize:12,color:'var(--ink-2)',fontWeight:600}}>Current stock</span>
         <span style={{fontSize:18,fontWeight:800,color:(product.quantity||0)<=3?'var(--bad)':(product.quantity||0)<=10?'var(--warn)':'var(--good)'}}>{product.quantity||0} units</span>
       </div>
-      <div style={{display:'flex',gap:4,marginBottom:14,background:'var(--panel-2)',padding:4,borderRadius:10}}>
+      <div style={{display:'flex',gap:4,marginBottom:14,background:'var(--line-2)',padding:4,borderRadius:10}}>
         {[['set','Set to'],['add','Add'],['remove','Remove']].map(([v,l])=>(
           <button key={v} onClick={()=>setMode(v)} style={{flex:1,padding:'8px 0',background:mode===v?'#fff':'transparent',border:'none',cursor:'pointer',fontSize:12,fontWeight:mode===v?700:400,color:mode===v?'var(--ink)':'#888',transition:'all .15s',borderRadius:8,fontFamily:'var(--sans)'}}>
             {l}
@@ -1051,7 +1130,7 @@ function Customers() {
     <div>
       {detail&&<Modal title="Customer" onClose={()=>setDetail(null)} footer={<button className="btn btn-line" onClick={()=>setDetail(null)}>Close</button>}>
         {[['Name',detail.name||'—'],['Phone',detail.phone],['Total Spent',ghs(detail.total_spent||0)],['Purchases',detail.purchase_count||0],['Last Purchase',fmtDate(detail.last_purchase)],['Joined',fmtDate(detail.created_at)]].map(([k,v])=>(
-          <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid var(--line-soft)',fontSize:13}}><span style={{color:'var(--ink-2)'}}>{k}</span><span style={{fontWeight:700}}>{v}</span></div>
+          <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid var(--line-2)',fontSize:13}}><span style={{color:'var(--ink-2)'}}>{k}</span><span style={{fontWeight:700}}>{v}</span></div>
         ))}
       </Modal>}
       <div className="page-head">
@@ -1175,7 +1254,7 @@ function Reports() {
             <div className="panel-head"><span className="panel-title">Revenue by Payment Method</span></div>
             <div className="panel-body">
               {Object.entries(data.byPay).sort((a,b)=>b[1]-a[1]).map(([k,v])=>(
-                <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid var(--line-soft)'}}>
+                <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid var(--line-2)'}}>
                   <span style={{fontSize:13,color:'var(--ink-2)',fontWeight:600}}>{k}</span>
                   <span style={{fontSize:14,fontWeight:800,color:'var(--ink)'}}>{ghs(v)}</span>
                 </div>
@@ -1187,7 +1266,7 @@ function Reports() {
             <div className="panel-head"><span className="panel-title">Expenses by Category</span></div>
             <div className="panel-body">
               {Object.entries(data.byCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>(
-                <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid var(--line-soft)'}}>
+                <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid var(--line-2)'}}>
                   <span style={{fontSize:13,color:'var(--ink-2)',fontWeight:600}}>{k}</span>
                   <span style={{fontSize:14,fontWeight:800,color:'var(--bad)'}}>{ghs(v)}</span>
                 </div>
