@@ -137,7 +137,7 @@ function ImgUpload({value,onChange}) {
           <img src={cdn(value,400)} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
           <div style={{position:'absolute',inset:0,background:'rgba(13,27,62,.5)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,opacity:0,transition:'opacity .15s'}}
             onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=0}>
-            <button type="button" className="btn btn-brass btn-sm" onClick={()=>ref.current?.click()}>Change</button>
+            <button type="button" className="btn btn-dark btn-sm" onClick={()=>ref.current?.click()}>Change</button>
             <button type="button" className="btn btn-line btn-sm" style={{color:'#fff',borderColor:'rgba(255,255,255,.3)',background:'transparent'}} onClick={()=>onChange('')}>Remove</button>
           </div>
         </div>
@@ -235,7 +235,7 @@ export default function Admin() {
           <input type="password" className="field-input" value={pass} onChange={e=>{setPass(e.target.value);setErr(false)}} onKeyDown={e=>e.key==='Enter'&&login()} placeholder="Enter password" autoFocus style={{borderColor:err?'var(--bad)':undefined}}/>
           {err&&<div style={{fontSize:11,color:'var(--bad)',marginTop:6}}>Incorrect password</div>}
         </div>
-        <button className="btn btn-brass" style={{width:'100%',justifyContent:'center',padding:'12px 0',fontSize:13,marginTop:4}} onClick={login}>Sign in</button>
+        <button className="btn btn-dark" style={{width:'100%',justifyContent:'center',padding:'12px 0',fontSize:13,marginTop:4}} onClick={login}>Sign in</button>
       </div>
     </div>
   )
@@ -515,7 +515,7 @@ function POS() {
     <div>
       {toast&&<div style={{position:'fixed',top:70,left:'50%',transform:'translateX(-50%)',background:'var(--ink)',color:'#fff',padding:'8px 20px',borderRadius:20,fontSize:12,fontWeight:600,zIndex:300,whiteSpace:'nowrap',boxShadow:'0 4px 20px rgba(0,0,0,.2)'}}>{toast}</div>}
       {lastReceipt&&(
-        <Modal title="Receipt" onClose={()=>setLastReceipt(null)} footer={<><button className="btn btn-brass" onClick={()=>window.print()}>{I.print} Print</button><button className="btn btn-line" onClick={()=>setLastReceipt(null)}>Close</button></>}>
+        <Modal title="Receipt" onClose={()=>setLastReceipt(null)} footer={<><button className="btn btn-dark" onClick={()=>window.print()}>{I.print} Print</button><button className="btn btn-line" onClick={()=>setLastReceipt(null)}>Close</button></>}>
           <div style={{textAlign:'center',marginBottom:20,paddingTop:8}}>
             <div style={{fontFamily:'var(--serif)',fontSize:22,fontWeight:600,color:'var(--ink)'}}>Esterea Home</div>
             <div style={{fontSize:11,color:'var(--ink-3)'}}>Accra, Ghana · 0547927722</div>
@@ -537,12 +537,13 @@ function POS() {
       <div className="page-head">
         <div><div className="page-h1">Point of Sale</div><div className="page-desc">In-store sales terminal</div></div>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 330px',gap:16,alignItems:'start'}}>
+      <div className="pos-layout">
         {/* Products */}
         <div>
           <div className="search" style={{marginBottom:14}}>{I.search}<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…"/>
           </div>
-          <div className="pos-product-grid">
+          <div className="pos-grid">
+            {shown.length===0&&<div style={{gridColumn:'1/-1',textAlign:'center',padding:'60px 20px',color:'var(--ink-3)',fontSize:13}}>{products.length===0?'No products in stock. Add products first.':'No products match your search.'}</div>}
             {shown.map(p=>(
               <div key={p.id} className="pos-card" onClick={()=>add(p)}>
                 {p.image
@@ -567,42 +568,42 @@ function POS() {
             ? <div style={{padding:'32px 20px',textAlign:'center',color:'rgba(255,255,255,.25)',fontSize:13}}>Tap a product to add</div>
             : <div className="cart-body">
                 {cart.map(c=>(
-                  <div key={c.id} className="cart-item">
+                  <div key={c.id} className="cart-line">
                     <div style={{flex:1,minWidth:0}}>
-                      <div className="cart-item-name" style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.name}</div>
-                      <div className="cart-item-price">{ghs(c.price)} ea.</div>
+                      <div className="cart-line-name" style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.name}</div>
+                      <div className="cart-line-price">{ghs(c.price)} ea.</div>
                     </div>
-                    <button className="qty-btn" onClick={()=>setCart(cs=>cs.filter(x=>x.id!==c.id))} style={{background:'rgba(239,68,68,.2)',color:'#fca5a5',fontSize:14}}>×</button>
-                    <button className="qty-btn" onClick={()=>setCart(cs=>cs.map(x=>x.id===c.id?{...x,qty:Math.max(1,x.qty-1)}:x))}>−</button>
-                    <span className="qty-num">{c.qty}</span>
-                    <button className="qty-btn" onClick={()=>setCart(cs=>cs.map(x=>x.id===c.id?{...x,qty:x.qty+1}:x))}>+</button>
+                    <button className="qbtn" onClick={()=>setCart(cs=>cs.filter(x=>x.id!==c.id))} style={{background:'rgba(239,68,68,.2)',color:'#fca5a5',fontSize:14}}>×</button>
+                    <button className="qbtn" onClick={()=>setCart(cs=>cs.map(x=>x.id===c.id?{...x,qty:Math.max(1,x.qty-1)}:x))}>−</button>
+                    <span className="qnum">{c.qty}</span>
+                    <button className="qbtn" onClick={()=>setCart(cs=>cs.map(x=>x.id===c.id?{...x,qty:x.qty+1}:x))}>+</button>
                     <span style={{fontSize:12,fontWeight:800,color:'#fff',width:56,textAlign:'right',flexShrink:0}}>{ghs(c.price*c.qty)}</span>
                   </div>
                 ))}
               </div>
           }
-          <div className="cart-total">
+          <div className="cart-totals">
             <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'rgba(255,255,255,.45)',marginBottom:4}}><span>Subtotal</span><span>{ghs(subtotal)}</span></div>
             <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
               <span style={{fontSize:11,color:'rgba(255,255,255,.4)',flexShrink:0}}>Discount GH₵</span>
-              <input type="number" min="0" value={discount} onChange={e=>setDiscount(e.target.value)} placeholder="0.00" className="cart-input" style={{height:28,marginBottom:0}}/>
+              <input type="number" min="0" value={discount} onChange={e=>setDiscount(e.target.value)} placeholder="0.00" className="cart-ti" style={{height:28,marginBottom:0}}/>
             </div>
-            <div className="cart-total-row">
+            <div className="cart-total-line">
               <span className="cart-total-label">Total</span>
               <span className="cart-total-value">{ghs(total)}</span>
             </div>
             {total>0&&<div style={{fontSize:11,color:'var(--good)',marginTop:3}}>Profit: {ghs(profit)}</div>}
           </div>
-          <div className="pay-methods">
+          <div className="pay-row">
             {['Cash','MoMo','Paystack'].map(m=>(
               <button key={m} className={`pay-btn${payment===m?' active':''}`} onClick={()=>setPayment(m)}>{m}</button>
             ))}
           </div>
           <div className="cart-inputs">
-            <input value={custName} onChange={e=>setCustName(e.target.value)} placeholder="Customer name (optional)" className="cart-input"/>
-            <input value={custPhone} onChange={e=>setCustPhone(e.target.value)} placeholder="Phone (optional)" className="cart-input" style={{marginBottom:0}}/>
+            <input value={custName} onChange={e=>setCustName(e.target.value)} placeholder="Customer name (optional)" className="cart-ti"/>
+            <input value={custPhone} onChange={e=>setCustPhone(e.target.value)} placeholder="Phone (optional)" className="cart-ti" style={{marginBottom:0}}/>
           </div>
-          <button className="cart-complete-btn" disabled={!cart.length||saving} onClick={complete}>
+          <button className="cart-cta" disabled={!cart.length||saving} onClick={complete}>
             {saving?'Recording…':`Complete Sale · ${ghs(total)}`}
           </button>
         </div>
@@ -686,8 +687,8 @@ function Invoices() {
                 </div>
                 {items.length>0&&<p style={{fontSize:12,color:'var(--ink-3)',marginBottom:6}}>{items.map(i=>`${i.qty}× ${i.name}`).join(' · ')}</p>}
                 <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                  {o.status==='Pending'&&<button className="btn btn-brass btn-sm" onClick={()=>upd(o.id,'Paid')}>Mark Paid</button>}
-                  {o.status==='Paid'&&<button className="btn btn-brass btn-sm" onClick={()=>upd(o.id,'Completed')}>Mark Completed</button>}
+                  {o.status==='Pending'&&<button className="btn btn-dark btn-sm" onClick={()=>upd(o.id,'Paid')}>Mark Paid</button>}
+                  {o.status==='Paid'&&<button className="btn btn-dark btn-sm" onClick={()=>upd(o.id,'Completed')}>Mark Completed</button>}
                   {!['Cancelled','Completed'].includes(o.status)&&<button className="btn btn-bad btn-sm" onClick={()=>upd(o.id,'Cancelled')}>Cancel</button>}
                   <button className="btn btn-line btn-sm" onClick={()=>setDetail(o)}>View Details</button>
                 </div>
@@ -712,7 +713,7 @@ function Receipts() {
   return (
     <div>
       {detail&&(
-        <Modal title={`Receipt ${detail.receipt_no}`} onClose={()=>setDetail(null)} footer={<><button className="btn btn-brass" onClick={()=>window.print()}>{I.print} Print</button><button className="btn btn-line" onClick={()=>setDetail(null)}>Close</button></>}>
+        <Modal title={`Receipt ${detail.receipt_no}`} onClose={()=>setDetail(null)} footer={<><button className="btn btn-dark" onClick={()=>window.print()}>{I.print} Print</button><button className="btn btn-line" onClick={()=>setDetail(null)}>Close</button></>}>
           <div style={{textAlign:'center',marginBottom:20,paddingTop:8}}>
             <div style={{fontFamily:'var(--serif)',fontSize:22,color:'var(--ink)'}}>Esterea Home</div>
             <div style={{fontSize:11,color:'var(--ink-3)'}}>Accra, Ghana · 0547927722</div>
@@ -778,7 +779,7 @@ function Refunds() {
   return (
     <div>
       {modal&&(
-        <Modal title="Issue Refund" onClose={()=>setModal(false)} footer={<><button className="btn btn-brass" onClick={save} disabled={saving||!form.order_ref||!form.amount}>{saving?'Saving…':'Issue Refund'}</button><button className="btn btn-line" onClick={()=>setModal(false)}>Cancel</button></>}>
+        <Modal title="Issue Refund" onClose={()=>setModal(false)} footer={<><button className="btn btn-dark" onClick={save} disabled={saving||!form.order_ref||!form.amount}>{saving?'Saving…':'Issue Refund'}</button><button className="btn btn-line" onClick={()=>setModal(false)}>Cancel</button></>}>
           <Field label="Order / Receipt Reference" value={form.order_ref} onChange={v=>setForm({...form,order_ref:v})} placeholder="e.g. POS-ABC123" required/>
           <NumField label="Refund Amount (GH₵)" value={form.amount} onChange={v=>setForm({...form,amount:v})} required/>
           <Select label="Refund Method" value={form.payment_method} onChange={v=>setForm({...form,payment_method:v})} options={['Cash','MoMo','Paystack']}/>
@@ -788,7 +789,7 @@ function Refunds() {
       )}
       <div className="page-head">
         <div><div className="page-h1">Refunds</div><div className="page-desc">{refunds.length} issued · {ghs(total)} total</div></div>
-        <button className="btn btn-brass" onClick={()=>setModal(true)}>{I.plus} Issue Refund</button>
+        <button className="btn btn-dark" onClick={()=>setModal(true)}>{I.plus} Issue Refund</button>
       </div>
       {loading?<Spinner/>:refunds.length===0?<Empty text="No refunds issued."/>:(
         <div className="panel">
@@ -841,7 +842,7 @@ function Products() {
       )}
       {editing&&(
         <Modal title={editing.id?'Edit Product':'New Product'} onClose={()=>setEditing(null)} wide
-          footer={<><button className="btn btn-brass" onClick={save} disabled={saving||!editing.name?.trim()}>{saving?'Saving…':editing.id?'Save Changes':'Add Product'}</button><button className="btn btn-line" onClick={()=>setEditing(null)}>Cancel</button></>}>
+          footer={<><button className="btn btn-dark" onClick={save} disabled={saving||!editing.name?.trim()}>{saving?'Saving…':editing.id?'Save Changes':'Add Product'}</button><button className="btn btn-line" onClick={()=>setEditing(null)}>Cancel</button></>}>
           <ImgUpload value={editing.image||''} onChange={v=>setEditing({...editing,image:v})}/>
           <div style={{display:'grid',gap:0,borderTop:'1px solid #f0f0f0',paddingTop:14}}>
             <Field label="Product Name" value={editing.name} onChange={v=>setEditing({...editing,name:v})} placeholder="e.g. Rattan Side Table" required/>
@@ -869,7 +870,7 @@ function Products() {
       )}
       <div className="page-head">
         <div><div className="page-h1">Products</div><div className="page-desc">{products.length} products · {products.filter(p=>(p.quantity||0)<=10).length} low/out of stock</div></div>
-        <button className="btn btn-brass" onClick={()=>setEditing(blank)}>{I.plus} Add Product</button>
+        <button className="btn btn-dark" onClick={()=>setEditing(blank)}>{I.plus} Add Product</button>
       </div>
       <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
         <div className="search" style={{flex:1,minWidth:200}}>{I.search}<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…"/>
@@ -891,7 +892,7 @@ function Products() {
                   <tr key={p.id} style={{opacity:p.visible?1:.55}}>
                     <td>
                       <div style={{display:'flex',alignItems:'center',gap:12}}>
-                        {p.image?<img src={cdn(p.image,84)} className="inv-row-img" alt=""/>:<div className="inv-row-img" style={{display:'flex',alignItems:'center',justifyContent:'center',color:'#ddd',fontFamily:'var(--serif)',fontSize:18}}>E</div>}
+                        {p.image?<img src={cdn(p.image,84)} className="row-thumb" alt=""/>:<div className="row-thumb" style={{display:'flex',alignItems:'center',justifyContent:'center',color:'#ddd',fontFamily:'var(--serif)',fontSize:18}}>E</div>}
                         <div><div style={{fontSize:13,fontWeight:700,color:'var(--ink)'}}>{p.name}</div></div>
                       </div>
                     </td>
@@ -900,7 +901,7 @@ function Products() {
                     <td style={{color:'var(--ink-3)',fontSize:12}}>{p.cost_price?ghs(p.cost_price):'—'}</td>
                     <td>
                       <div style={{display:'flex',alignItems:'center',gap:8}}>
-                        <span className="stock-num">{p.quantity||0}</span>
+                        <span className="stock-n">{p.quantity||0}</span>
                         <span className={`stock-pill ${scls}`}>{slabel}</span>
                       </div>
                     </td>
@@ -946,7 +947,7 @@ function Promos() {
   return (
     <div>
       {modal&&(
-        <Modal title="Add Promo / Sale Price" onClose={()=>setModal(false)} footer={<><button className="btn btn-brass" onClick={save} disabled={saving||!form.product_id||!form.price||!form.end_date}>{saving?'Saving…':'Save Promo'}</button><button className="btn btn-line" onClick={()=>setModal(false)}>Cancel</button></>}>
+        <Modal title="Add Promo / Sale Price" onClose={()=>setModal(false)} footer={<><button className="btn btn-dark" onClick={save} disabled={saving||!form.product_id||!form.price||!form.end_date}>{saving?'Saving…':'Save Promo'}</button><button className="btn btn-line" onClick={()=>setModal(false)}>Cancel</button></>}>
           <Select label="Product" value={form.product_id} onChange={v=>setForm({...form,product_id:v})} options={products.map(p=>({value:p.id,label:p.name}))} required/>
           <NumField label="Promo Price (GH₵)" value={form.price} onChange={v=>setForm({...form,price:v})} required/>
           <Field label="Label" value={form.label} onChange={v=>setForm({...form,label:v})} placeholder="e.g. Flash Sale, Bundle Deal"/>
@@ -955,7 +956,7 @@ function Promos() {
       )}
       <div className="page-head">
         <div><div className="page-h1">Promos & Bundles</div><div className="page-desc">{active.length} active · {expired.length} expired</div></div>
-        <button className="btn btn-brass" onClick={()=>setModal(true)}>{I.plus} Add Promo</button>
+        <button className="btn btn-dark" onClick={()=>setModal(true)}>{I.plus} Add Promo</button>
       </div>
       {loading?<Spinner/>:<>
         {active.length>0&&<><div style={{fontSize:11,fontWeight:700,color:'var(--good)',marginBottom:8,textTransform:'uppercase',letterSpacing:'.06em'}}>Active Promos</div>
@@ -1004,7 +1005,7 @@ function Restock() {
   return (
     <div>
       {modal&&(
-        <Modal title="Record Restock" onClose={()=>setModal(false)} footer={<><button className="btn btn-brass" onClick={save} disabled={saving||!form.product_id||!form.qty}>{saving?'Saving…':'Record Restock'}</button><button className="btn btn-line" onClick={()=>setModal(false)}>Cancel</button></>}>
+        <Modal title="Record Restock" onClose={()=>setModal(false)} footer={<><button className="btn btn-dark" onClick={save} disabled={saving||!form.product_id||!form.qty}>{saving?'Saving…':'Record Restock'}</button><button className="btn btn-line" onClick={()=>setModal(false)}>Cancel</button></>}>
           <Select label="Product" value={form.product_id} onChange={v=>setForm({...form,product_id:v})} options={products.map(p=>({value:p.id,label:`${p.name} (stock: ${p.quantity||0})`}))} required/>
           <NumField label="Quantity Received" value={form.qty} onChange={v=>setForm({...form,qty:v})} step="1" required/>
           <NumField label="Cost per Unit (GH₵)" value={form.cost_per_unit} onChange={v=>setForm({...form,cost_per_unit:v})}/>
@@ -1014,7 +1015,7 @@ function Restock() {
       )}
       <div className="page-head">
         <div><div className="page-h1">Restock</div><div className="page-desc">Record incoming stock deliveries</div></div>
-        <button className="btn btn-brass" onClick={()=>setModal(true)}>{I.plus} Record Restock</button>
+        <button className="btn btn-dark" onClick={()=>setModal(true)}>{I.plus} Record Restock</button>
       </div>
       {loading?<Spinner/>:entries.length===0?<Empty text="No restock records."/>:(
         <div className="panel" style={{overflow:'hidden'}}>
@@ -1069,7 +1070,7 @@ function StockAdjustInline({product,onDone}) {
       </div>
       {qty!==''&&<div style={{fontSize:13,color:'var(--good)',fontWeight:700,background:'#dcfce7',padding:'10px 14px',borderRadius:10,marginBottom:12}}>New stock will be <strong>{preview()}</strong> units</div>}
       <div className="field"><label>Reason (optional)</label><input className="field-input" value={note} onChange={e=>setNote(e.target.value)} placeholder="e.g. Manual correction, damaged items"/></div>
-      <button className="btn btn-brass" style={{width:'100%',justifyContent:'center',padding:'13px 0',fontSize:14,borderRadius:12}} disabled={!qty||saving} onClick={apply}>{saving?'Saving…':'Update Stock'}</button>
+      <button className="btn btn-dark" style={{width:'100%',justifyContent:'center',padding:'13px 0',fontSize:14,borderRadius:12}} disabled={!qty||saving} onClick={apply}>{saving?'Saving…':'Update Stock'}</button>
     </div>
   )
 }
@@ -1097,7 +1098,7 @@ function StockAdjust() {
             return (
               <div key={p.id} className="panel" style={{padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer'}} onClick={()=>setSelected(p)}>
                 <div><div style={{fontSize:13,fontWeight:700}}>{p.name}</div><div style={{fontSize:11,color:'var(--ink-3)'}}>{p.category}</div></div>
-                <div style={{textAlign:'right'}}><div style={{fontSize:24,fontWeight:900,color:clr}}>{q}</div><button className="btn btn-brass btn-sm" style={{marginTop:4}}>Adjust</button></div>
+                <div style={{textAlign:'right'}}><div style={{fontSize:24,fontWeight:900,color:clr}}>{q}</div><button className="btn btn-dark btn-sm" style={{marginTop:4}}>Adjust</button></div>
               </div>
             )
           })}
@@ -1177,7 +1178,7 @@ function Expenses() {
   const monthTotal=expenses.filter(e=>e.date?.startsWith(today().slice(0,7))).reduce((a,e)=>a+Number(e.amount||0),0)
   return (
     <div>
-      {editing&&<Modal title={editing.id?'Edit Expense':'New Expense'} onClose={()=>setEditing(null)} footer={<><button className="btn btn-brass" onClick={save} disabled={saving}>{saving?'Saving…':'Save'}</button><button className="btn btn-line" onClick={()=>setEditing(null)}>Cancel</button></>}>
+      {editing&&<Modal title={editing.id?'Edit Expense':'New Expense'} onClose={()=>setEditing(null)} footer={<><button className="btn btn-dark" onClick={save} disabled={saving}>{saving?'Saving…':'Save'}</button><button className="btn btn-line" onClick={()=>setEditing(null)}>Cancel</button></>}>
         <Field label="Description" value={editing.description} onChange={v=>setEditing({...editing,description:v})} placeholder="e.g. Monthly rent" required/>
         <NumField label="Amount (GH₵)" value={editing.amount} onChange={v=>setEditing({...editing,amount:v})} required/>
         <Field label="Category" value={editing.category} onChange={v=>setEditing({...editing,category:v})} placeholder="e.g. Rent, Logistics"/>
@@ -1186,7 +1187,7 @@ function Expenses() {
       </Modal>}
       <div className="page-head">
         <div><div className="page-h1">Expenses</div><div className="page-desc">This month: <strong style={{color:'var(--bad)'}}>{ghs(monthTotal)}</strong> · All time: {ghs(total)}</div></div>
-        <button className="btn btn-brass" onClick={()=>setEditing({description:'',amount:'',category:'',notes:'',date:today()})}>{I.plus} Add Expense</button>
+        <button className="btn btn-dark" onClick={()=>setEditing({description:'',amount:'',category:'',notes:'',date:today()})}>{I.plus} Add Expense</button>
       </div>
       <div className="tabs" style={{marginBottom:14}}>
         {cats.map(c=><button key={c} className={`tab${catFilter===c?' active':''}`} onClick={()=>setCatFilter(c)}>{c==='all'?'All Categories':c}</button>)}
@@ -1295,7 +1296,7 @@ function Staff() {
   }
   return (
     <div>
-      {modal&&<Modal title={form.id?'Edit Staff':'Add Staff Member'} onClose={()=>setModal(false)} footer={<><button className="btn btn-brass" onClick={save} disabled={saving||!form.name.trim()}>{saving?'Saving…':'Save'}</button><button className="btn btn-line" onClick={()=>setModal(false)}>Cancel</button></>}>
+      {modal&&<Modal title={form.id?'Edit Staff':'Add Staff Member'} onClose={()=>setModal(false)} footer={<><button className="btn btn-dark" onClick={save} disabled={saving||!form.name.trim()}>{saving?'Saving…':'Save'}</button><button className="btn btn-line" onClick={()=>setModal(false)}>Cancel</button></>}>
         <Field label="Full Name" value={form.name} onChange={v=>setForm({...form,name:v})} placeholder="e.g. Ama Mensah" required/>
         <Select label="Role" value={form.role} onChange={v=>setForm({...form,role:v})} options={['Manager','Cashier','Sales Rep','Delivery','Other']}/>
         <Field label="Phone" value={form.phone} onChange={v=>setForm({...form,phone:v})} placeholder="0XX XXX XXXX"/>
@@ -1304,7 +1305,7 @@ function Staff() {
       </Modal>}
       <div className="page-head">
         <div><div className="page-h1">Staff</div><div className="page-desc">{staff.filter(s=>s.active).length} active members</div></div>
-        <button className="btn btn-brass" onClick={()=>{setForm({name:'',role:'',phone:'',pin:'',active:true});setModal(true)}}>{I.plus} Add Staff</button>
+        <button className="btn btn-dark" onClick={()=>{setForm({name:'',role:'',phone:'',pin:'',active:true});setModal(true)}}>{I.plus} Add Staff</button>
       </div>
       {loading?<Spinner/>:staff.length===0?<Empty text="No staff members."/>:(
         <div className="panel" style={{overflow:'hidden'}}>
