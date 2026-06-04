@@ -15,7 +15,7 @@ const fmtPh = p => p.replace(/\s+/g,'').replace(/^0/,'233')
 
 function page() {
   const h = window.location.hash.replace('#','') || '/'
-  const map = {'/':'home','/shop':'shop','/cart':'cart','/checkout':'checkout','/track':'track','/admin':'admin','/success':'success'}
+  const map = {'/':'home','/shop':'shop','/detail':'detail','/cart':'cart','/checkout':'checkout','/track':'track','/admin':'admin','/success':'success'}
   return map[h] || 'home'
 }
 
@@ -49,31 +49,30 @@ function Card({ p, promo, onOpen, onAdd }) {
   const [done, setDone] = useState(false)
   const add = e => { e.stopPropagation(); onAdd(); setDone(true); setTimeout(()=>setDone(false),1400) }
   const price = promo ? promo.price : p.price
+  const hasWholesale = p.wholesale_price > 0 && p.wholesale_min_qty > 0
 
   return (
-    <div className="card anim-up" onClick={onOpen}>
-      <div className="card-img" style={{ aspectRatio:'3/4', borderRadius:2 }}>
+    <div className="card anim-up" onClick={onOpen} style={{ cursor:'pointer' }}>
+      <div className="card-img" style={{ position:'relative', aspectRatio:'1/1', borderRadius:'var(--r-md)', overflow:'hidden', background:'var(--cream)' }}>
         {p.image
-          ? <img src={img(p.image,600)} alt={p.name} loading="lazy" />
-          : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', color:'#ccc', fontSize:32, fontFamily:'var(--serif)' }}>E</div>
+          ? <img src={img(p.image,600)} alt={p.name} loading="lazy" style={{ width:'100%', height:'100%', objectFit:'cover', transition:'transform .5s ease' }} className="card-zoom" />
+          : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', color:'#ddd', fontSize:34, fontFamily:'var(--serif)' }}>E</div>
         }
-        {promo && <span style={{ position:'absolute', top:10, left:10, background:'#111', color:'#fff', fontSize:9, letterSpacing:'.08em', fontWeight:500, padding:'3px 8px', textTransform:'uppercase' }}>Sale</span>}
-        <button onClick={add} style={{ position:'absolute', bottom:10, right:10, width:34, height:34, background: done ? '#111' : '#fff', color: done ? '#fff' : '#111', border:'none', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', boxShadow:'0 1px 6px rgba(0,0,0,.12)', transition:'all .2s', opacity: done ? 1 : 0 }} className="card-add-btn">
-          {done ? '✓' : Ico.plus}
-        </button>
+        {promo && <span style={{ position:'absolute', top:10, left:10, background:'var(--green)', color:'#fff', fontSize:9, letterSpacing:'.06em', fontWeight:700, padding:'3px 9px', borderRadius:20, textTransform:'uppercase' }}>Sale</span>}
       </div>
       <div style={{ marginTop:12 }}>
-        {p.category && <div style={{ fontSize:10, letterSpacing:'.1em', textTransform:'uppercase', color:'#aaa', marginBottom:4 }}>{p.category}</div>}
-        <div className="clip2" style={{ fontSize:13, color:'#222', lineHeight:1.45, marginBottom:8 }}>{p.name}</div>
-        <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between' }}>
-          <div style={{ display:'flex', alignItems:'baseline', gap:6 }}>
-            <span style={{ fontSize:14, fontWeight:500 }}>{ghs(price)}</span>
-            {promo && <span style={{ fontSize:11, color:'#bbb', textDecoration:'line-through' }}>{ghs(p.price)}</span>}
+        {p.category && <div style={{ fontSize:10, letterSpacing:'.1em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:5 }}>{p.category}</div>}
+        <div className="clip2" style={{ fontSize:13.5, fontWeight:500, color:'var(--ink)', lineHeight:1.4, marginBottom:8, minHeight:38 }}>{p.name}</div>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
+          <div style={{ display:'flex', alignItems:'baseline', gap:6, minWidth:0 }}>
+            <span style={{ fontSize:15, fontWeight:700, whiteSpace:'nowrap' }}>{ghs(price)}</span>
+            {promo && <span style={{ fontSize:11, color:'var(--ink-3)', textDecoration:'line-through' }}>{ghs(p.price)}</span>}
           </div>
-          <button onClick={add} className="btn btn-dark" style={{ padding:'5px 12px', borderRadius:2, fontSize:11 }}>
+          <button onClick={add} className="btn" style={{ padding:'7px 16px', borderRadius:8, fontSize:12, background: done ? 'var(--ink)' : 'var(--green)', color:'#fff', flexShrink:0 }}>
             {done ? '✓ Added' : 'Add'}
           </button>
         </div>
+        {hasWholesale && <div style={{ fontSize:11, color:'var(--green)', marginTop:7, fontWeight:500 }}>Buy {p.wholesale_min_qty}+ for {ghs(p.wholesale_price)} each</div>}
       </div>
     </div>
   )
@@ -110,6 +109,7 @@ function Store() {
   const [cat, setCat]       = useState('All')
   const [detail, setDetail] = useState(null)
   const [heroI, setHeroI]   = useState(0)
+  const [recent, setRecent] = useState([])
 
   // Checkout
   const [fulfill, setFulfill]     = useState('delivery')
@@ -127,6 +127,9 @@ function Store() {
   const [tracking, setTracking] = useState(false)
 
   useEffect(() => { load() }, [])
+  useEffect(() => {
+    try { setRecent(JSON.parse(localStorage.getItem('esterea_recent')||'[]')) } catch {}
+  }, [])
   useEffect(() => {
     const heroes = products.filter(p=>p.image)
     if (!heroes.length) return
@@ -151,9 +154,19 @@ function Store() {
   }
 
   const go = useCallback((p,h)=>{ setPg(p); window.location.hash=h; window.scrollTo(0,0) },[])
+  const openDetail = useCallback(p=>{
+    setDetail(p)
+    setRecent(prev=>{
+      const next=[p.id,...prev.filter(id=>id!==p.id)].slice(0,8)
+      try { localStorage.setItem('esterea_recent', JSON.stringify(next)) } catch {}
+      return next
+    })
+    go('detail','/detail')
+  },[go])
   const toast_ = m=>{ setToast(m); setTimeout(()=>setToast(''),2000) }
   const promo  = id => promos.find(pr=>pr.product_id===id && new Date(pr.end_date)>new Date())
   const heroes = products.filter(p=>p.image).slice(0,5)
+  const recentProducts = recent.map(id=>products.find(p=>p.id===id)).filter(Boolean).slice(0,6)
   const filtered = products.filter(p=>{
     if (q && !p.name.toLowerCase().includes(q.toLowerCase()) && !p.category?.toLowerCase().includes(q.toLowerCase())) return false
     if (cat!=='All' && p.category!==cat) return false
@@ -205,7 +218,7 @@ function Store() {
   }
 
   const S = { // shared inline styles
-    page: { maxWidth:1100, margin:'0 auto', padding:'0 20px' },
+    page: { maxWidth:1240, margin:'0 auto', padding:'0 24px' },
     narrow: { maxWidth:520, margin:'0 auto', padding:'0 20px' },
     rule: { borderBottom:'1px solid #e2e2e2' },
   }
@@ -223,12 +236,12 @@ function Store() {
       {/* ── NAV ── */}
       <nav style={{ position:'sticky', top:0, zIndex:50, background:'rgba(255,255,255,.96)', backdropFilter:'blur(12px)', borderBottom:'1px solid #e2e2e2' }}>
         <div style={{ ...S.page, display:'flex', alignItems:'center', justifyContent:'space-between', height:56 }}>
-          <button onClick={()=>go('home','/')} style={{ background:'none', border:'none', cursor:'pointer', fontFamily:'var(--serif)', fontSize:20, fontWeight:400, color:'#111', letterSpacing:'-.01em' }}>
+          <button onClick={()=>go('home','/')} style={{ background:'none', border:'none', cursor:'pointer', fontFamily:'var(--serif)', fontSize:21, fontWeight:600, color:'#111', letterSpacing:'.01em' }}>
             Esterea Home
           </button>
-          <div style={{ display:'flex', alignItems:'center', gap:28 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:30 }}>
             {[['Home','home','/'],['Shop','shop','/shop'],['Track','track','/track']].map(([l,p,h])=>(
-              <button key={p} onClick={()=>go(p,h)} style={{ display:'none', background:'none', border:'none', cursor:'pointer', fontSize:12, fontWeight:500, letterSpacing:'.03em', color:pg===p?'#111':'#999', transition:'color .15s' }}
+              <button key={p} onClick={()=>go(p,h)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:13, fontWeight:600, color:pg===p?'var(--green)':'var(--ink-2)', transition:'color .15s' }}
                 className="desktop-nav-link">{l}</button>
             ))}
           </div>
@@ -249,36 +262,43 @@ function Store() {
         )}
       </nav>
 
-      <style>{`.desktop-nav-link { display: none !important } @media(min-width:700px){ .desktop-nav-link { display: block !important } } .card:hover .card-add-btn { opacity: 1 !important }`}</style>
+      <style>{`.desktop-nav-link { display: none !important } @media(min-width:760px){ .desktop-nav-link { display: block !important } } .card:hover .card-zoom { transform: scale(1.05) }`}</style>
 
       {/* ══════ HOME ══════ */}
       {pg==='home' && <>
         {/* Hero */}
-        <div style={{ position:'relative', height:'min(68vh,500px)', background:'#111', overflow:'hidden' }}>
+        <div style={{ position:'relative', height:'min(72vh,560px)', background:'#111', overflow:'hidden' }}>
           {heroes.map((p,i)=>(
             <div key={p.id} style={{ position:'absolute', inset:0, opacity:i===heroI?1:0, transition:'opacity 1s ease' }}>
-              <img src={img(p.image,1400)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', filter:'brightness(.45)' }} />
+              <img src={img(p.image,1600)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', filter:'brightness(.5)' }} />
             </div>
           ))}
           {!heroes.length && <div style={{ position:'absolute', inset:0, background:'#1a1a1a' }} />}
-          <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top, rgba(0,0,0,.7) 0%, transparent 55%)' }} />
-          <div style={{ position:'relative', zIndex:1, height:'100%', display:'flex', flexDirection:'column', justifyContent:'flex-end', ...S.page, paddingBottom:48 }}>
-            <p style={{ fontSize:10, letterSpacing:'.2em', textTransform:'uppercase', color:'rgba(255,255,255,.5)', marginBottom:16 }}>Accra, Ghana</p>
-            <h1 className="anim-up" style={{ fontFamily:'var(--serif)', fontSize:'clamp(32px,6vw,64px)', fontWeight:400, color:'#fff', lineHeight:1.1, marginBottom:20 }}>
-              Your home,<br/>beautifully dressed.
-            </h1>
-            <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
-              <button onClick={()=>go('shop','/shop')} className="btn btn-dark" style={{ padding:'11px 28px', borderRadius:2, fontSize:12, letterSpacing:'.04em' }}>
-                Shop Now
-              </button>
-              <a href={`https://wa.me/${WA}`} target="_blank" rel="noreferrer" style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'11px 20px', border:'1px solid rgba(255,255,255,.3)', color:'rgba(255,255,255,.75)', fontSize:12, fontWeight:500, letterSpacing:'.03em', textDecoration:'none', transition:'border-color .15s' }}>
-                {Ico.wa} WhatsApp
-              </a>
+          <div style={{ position:'absolute', inset:0, background:'linear-gradient(to right, rgba(0,0,0,.65) 0%, rgba(0,0,0,.25) 60%, transparent 100%)' }} />
+          <div style={{ position:'relative', zIndex:1, height:'100%', display:'flex', flexDirection:'column', justifyContent:'center', ...S.page }}>
+            <div style={{ maxWidth:560 }}>
+              <div style={{ display:'inline-flex', alignItems:'center', gap:6, color:'#5fd397', fontSize:11, letterSpacing:'.14em', textTransform:'uppercase', fontWeight:600, marginBottom:18 }}>
+                {Ico.pin} Aviation Road, Accra
+              </div>
+              <h1 className="anim-up" style={{ fontFamily:'var(--serif)', fontSize:'clamp(36px,6vw,62px)', fontWeight:500, color:'#fff', lineHeight:1.05, marginBottom:18, letterSpacing:'-.01em' }}>
+                Home essentials,<br/>delivered to you.
+              </h1>
+              <p style={{ fontSize:15, color:'rgba(255,255,255,.78)', lineHeight:1.6, marginBottom:28, maxWidth:440 }}>
+                Quality cookware, curtains, bedding and more. Nationwide delivery across Ghana.
+              </p>
+              <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+                <button onClick={()=>go('shop','/shop')} className="btn" style={{ padding:'13px 28px', borderRadius:30, fontSize:13, background:'#fff', color:'#111' }}>
+                  Shop Collection &nbsp;→
+                </button>
+                <a href={`tel:${PHONE}`} className="btn" style={{ padding:'13px 26px', borderRadius:30, fontSize:13, background:'transparent', border:'1.5px solid rgba(255,255,255,.35)', color:'#fff', textDecoration:'none' }}>
+                  <span style={{ color:'#5fd397' }}>{Ico.wa}</span> Call Us
+                </a>
+              </div>
             </div>
             {heroes.length>1 && (
-              <div style={{ display:'flex', gap:6, marginTop:28 }}>
+              <div style={{ display:'flex', gap:7, marginTop:34, position:'absolute', bottom:28, left:20 }}>
                 {heroes.map((_,i)=>(
-                  <button key={i} onClick={()=>setHeroI(i)} style={{ border:'none', cursor:'pointer', borderRadius:0, background: i===heroI?'#fff':'rgba(255,255,255,.25)', width: i===heroI?28:7, height:3, padding:0, transition:'all .4s ease' }} />
+                  <button key={i} onClick={()=>setHeroI(i)} style={{ border:'none', cursor:'pointer', background: i===heroI?'#fff':'rgba(255,255,255,.4)', width: i===heroI?24:8, height:8, borderRadius:4, padding:0, transition:'all .4s ease' }} />
                 ))}
               </div>
             )}
@@ -287,11 +307,11 @@ function Store() {
 
         {/* Category pills */}
         {cats.length>1 && (
-          <div style={{ borderBottom:'1px solid #e2e2e2', overflow:'hidden' }}>
-            <div className="scrollbar-hide" style={{ ...S.page, display:'flex', gap:0, overflowX:'auto', paddingTop:20, paddingBottom:0 }}>
+          <div style={{ ...S.page, paddingTop:24, paddingBottom:4 }}>
+            <div className="scrollbar-hide" style={{ display:'flex', gap:10, overflowX:'auto', paddingBottom:4 }}>
               {cats.map(c=>(
                 <button key={c} onClick={()=>{setCat(c);go('shop','/shop')}}
-                  style={{ background:'none', border:'none', borderBottom: c===cat?'2px solid #111':'2px solid transparent', cursor:'pointer', padding:'8px 16px', fontSize:12, fontWeight:500, letterSpacing:'.04em', color: c===cat?'#111':'#999', whiteSpace:'nowrap', transition:'color .15s, border-color .15s', flexShrink:0 }}>
+                  style={{ background: c===cat?'var(--ink)':'#fff', color: c===cat?'#fff':'var(--ink-2)', border:'1px solid', borderColor: c===cat?'var(--ink)':'var(--line)', cursor:'pointer', padding:'8px 18px', fontSize:12.5, fontWeight:600, borderRadius:30, whiteSpace:'nowrap', transition:'all .15s', flexShrink:0 }}>
                   {c}
                 </button>
               ))}
@@ -299,16 +319,34 @@ function Store() {
           </div>
         )}
 
+        {/* Recently Viewed */}
+        {recentProducts.length>0 && (
+          <div style={{ ...S.page, paddingTop:24 }}>
+            <h2 style={{ fontSize:16, fontWeight:700, marginBottom:14 }}>Recently Viewed</h2>
+            <div className="scrollbar-hide" style={{ display:'flex', gap:16, overflowX:'auto', paddingBottom:6 }}>
+              {recentProducts.map(p=>(
+                <div key={p.id} onClick={()=>openDetail(p)} style={{ flexShrink:0, width:130, cursor:'pointer' }}>
+                  <div style={{ width:130, height:130, borderRadius:'var(--r-md)', overflow:'hidden', background:'var(--cream)' }}>
+                    {p.image && <img src={img(p.image,260)} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
+                  </div>
+                  <div className="clip1" style={{ fontSize:11.5, marginTop:8, color:'var(--ink-2)' }}>{p.name}</div>
+                  <div style={{ fontSize:12.5, fontWeight:700, marginTop:2 }}>{ghs(promo(p.id)?promo(p.id).price:p.price)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Products */}
-        <div style={{ ...S.page, padding:'40px 20px 60px' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:28 }}>
-            <h2 style={{ fontFamily:'var(--serif)', fontSize:28, fontWeight:400 }}>Our Collection</h2>
-            {products.length>8 && <button onClick={()=>go('shop','/shop')} style={{ background:'none', border:'none', cursor:'pointer', fontSize:12, color:'#999', textDecoration:'underline' }}>View all</button>}
+        <div style={{ ...S.page, padding:'32px 20px 60px' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:20 }}>
+            <h2 style={{ fontSize:18, fontWeight:700 }}>All Products</h2>
+            {products.length>10 && <button onClick={()=>go('shop','/shop')} style={{ background:'none', border:'none', cursor:'pointer', fontSize:12.5, color:'var(--green)', fontWeight:600 }}>View all →</button>}
           </div>
           {loading
-            ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:24 }}>{[...Array(8)].map((_,i)=><CardSkel key={i}/>)}</div>
-            : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:24 }}>
-                {products.slice(0,8).map((p,i)=><div key={p.id} className={`d${Math.min(i+1,4)}`}><Card p={p} promo={promo(p.id)} onOpen={()=>{setDetail(p);go('detail','/detail')}} onAdd={()=>addCart(p)}/></div>)}
+            ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))', gap:'28px 22px' }}>{[...Array(10)].map((_,i)=><CardSkel key={i}/>)}</div>
+            : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))', gap:'28px 22px' }}>
+                {products.slice(0,10).map((p,i)=><div key={p.id} className={`d${Math.min(i+1,4)}`}><Card p={p} promo={promo(p.id)} onOpen={()=>openDetail(p)} onAdd={()=>addCart(p)}/></div>)}
               </div>
           }
         </div>
@@ -330,20 +368,20 @@ function Store() {
       {pg==='shop' && (
         <div style={{ ...S.page, padding:'32px 20px 60px' }}>
           {cats.length>1 && (
-            <div className="scrollbar-hide" style={{ display:'flex', gap:0, overflowX:'auto', marginBottom:28, borderBottom:'1px solid #e2e2e2', paddingBottom:0 }}>
+            <div className="scrollbar-hide" style={{ display:'flex', gap:10, overflowX:'auto', marginBottom:28, paddingBottom:4 }}>
               {cats.map(c=>(
-                <button key={c} onClick={()=>setCat(c)} style={{ background:'none', border:'none', borderBottom:c===cat?'2px solid #111':'2px solid transparent', cursor:'pointer', padding:'8px 16px', fontSize:12, fontWeight:500, letterSpacing:'.04em', color:c===cat?'#111':'#999', whiteSpace:'nowrap', transition:'color .15s', flexShrink:0 }}>
+                <button key={c} onClick={()=>setCat(c)} style={{ background: c===cat?'var(--ink)':'#fff', color: c===cat?'#fff':'var(--ink-2)', border:'1px solid', borderColor: c===cat?'var(--ink)':'var(--line)', cursor:'pointer', padding:'8px 18px', fontSize:12.5, fontWeight:600, borderRadius:30, whiteSpace:'nowrap', transition:'all .15s', flexShrink:0 }}>
                   {c}
                 </button>
               ))}
             </div>
           )}
           {loading
-            ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:24 }}>{[...Array(8)].map((_,i)=><CardSkel key={i}/>)}</div>
+            ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))', gap:'28px 22px' }}>{[...Array(8)].map((_,i)=><CardSkel key={i}/>)}</div>
             : filtered.length===0
               ? <div style={{ padding:'80px 0', textAlign:'center', color:'#bbb', fontSize:14 }}>No products found.</div>
-              : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:24 }}>
-                  {filtered.map((p,i)=><div key={p.id} className={`d${Math.min(i%4+1,4)}`}><Card p={p} promo={promo(p.id)} onOpen={()=>{setDetail(p);go('detail','/detail')}} onAdd={()=>addCart(p)}/></div>)}
+              : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))', gap:'28px 22px' }}>
+                  {filtered.map((p,i)=><div key={p.id} className={`d${Math.min(i%4+1,4)}`}><Card p={p} promo={promo(p.id)} onOpen={()=>openDetail(p)} onAdd={()=>addCart(p)}/></div>)}
                 </div>
           }
         </div>
@@ -356,21 +394,23 @@ function Store() {
             {Ico.back} Back
           </button>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:48, alignItems:'start' }}>
-            <div style={{ aspectRatio:'1/1', background:'#f5f5f3', borderRadius:2, overflow:'hidden' }}>
+            <div style={{ aspectRatio:'1/1', background:'var(--cream)', borderRadius:'var(--r-lg)', overflow:'hidden' }}>
               {detail.image ? <img src={img(detail.image,900)} alt={detail.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : null}
             </div>
             <div className="anim-up">
-              {detail.category && <div style={{ fontSize:10, letterSpacing:'.12em', textTransform:'uppercase', color:'#aaa', marginBottom:10 }}>{detail.category}</div>}
-              <h1 style={{ fontFamily:'var(--serif)', fontSize:32, fontWeight:400, lineHeight:1.2, marginBottom:16 }}>{detail.name}</h1>
-              {detail.description && <p style={{ fontSize:13, color:'#666', lineHeight:1.7, marginBottom:20 }}>{detail.description}</p>}
-              <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:28 }}>
-                <span style={{ fontSize:22, fontWeight:500 }}>{ghs(promo(detail.id)?promo(detail.id).price:detail.price)}</span>
-                {promo(detail.id) && <span style={{ fontSize:14, color:'#bbb', textDecoration:'line-through' }}>{ghs(detail.price)}</span>}
+              {detail.category && <div style={{ fontSize:10, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:10 }}>{detail.category}</div>}
+              <h1 style={{ fontFamily:'var(--serif)', fontSize:32, fontWeight:500, lineHeight:1.2, marginBottom:16 }}>{detail.name}</h1>
+              {detail.description && <p style={{ fontSize:14, color:'var(--ink-2)', lineHeight:1.7, marginBottom:20 }}>{detail.description}</p>}
+              <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:8 }}>
+                <span style={{ fontSize:26, fontWeight:700 }}>{ghs(promo(detail.id)?promo(detail.id).price:detail.price)}</span>
+                {promo(detail.id) && <span style={{ fontSize:15, color:'var(--ink-3)', textDecoration:'line-through' }}>{ghs(detail.price)}</span>}
               </div>
-              <button onClick={()=>addCart(detail)} className="btn btn-dark" style={{ width:'100%', justifyContent:'center', padding:'14px 0', borderRadius:2, fontSize:13, letterSpacing:'.04em', marginBottom:12 }}>
+              {detail.wholesale_price>0 && detail.wholesale_min_qty>0 && <div style={{ fontSize:13, color:'var(--green)', fontWeight:600, marginBottom:24, background:'var(--green-bg)', padding:'8px 12px', borderRadius:8, display:'inline-block' }}>Buy {detail.wholesale_min_qty}+ for {ghs(detail.wholesale_price)} each</div>}
+              <div style={{ marginBottom:28 }} />
+              <button onClick={()=>addCart(detail)} className="btn btn-green" style={{ width:'100%', justifyContent:'center', padding:'15px 0', borderRadius:10, fontSize:13.5, marginBottom:12 }}>
                 Add to Cart
               </button>
-              <a href={`https://wa.me/${WA}?text=Hi, I'm interested in: ${detail.name}`} target="_blank" rel="noreferrer" className="btn btn-light" style={{ width:'100%', justifyContent:'center', padding:'14px 0', borderRadius:2, fontSize:13, textDecoration:'none' }}>
+              <a href={`https://wa.me/${WA}?text=Hi, I'm interested in: ${detail.name}`} target="_blank" rel="noreferrer" className="btn" style={{ width:'100%', justifyContent:'center', padding:'15px 0', borderRadius:10, fontSize:13.5, textDecoration:'none', background:'#fff', border:'1.5px solid var(--line)', color:'var(--ink)' }}>
                 {Ico.wa} Enquire on WhatsApp
               </a>
             </div>
@@ -413,7 +453,7 @@ function Store() {
                 <div style={{ display:'flex', justifyContent:'space-between', fontSize:16, fontWeight:500, marginBottom:24, paddingTop:4 }}>
                   <span>Total</span><span>{ghs(ct)}</span>
                 </div>
-                <button onClick={()=>go('checkout','/checkout')} className="btn btn-dark" style={{ width:'100%', justifyContent:'center', padding:'14px 0', borderRadius:2, fontSize:13, letterSpacing:'.04em' }}>
+                <button onClick={()=>go('checkout','/checkout')} className="btn btn-dark" style={{ width:'100%', justifyContent:'center', padding:'14px 0', borderRadius:10, fontSize:13, letterSpacing:'.04em' }}>
                   Checkout
                 </button>
               </>
@@ -455,7 +495,7 @@ function Store() {
             </div>
           </div>
 
-          <button onClick={checkout} disabled={!name.trim()||!phone.trim()||(fulfill==='delivery'&&!addr.trim())||submitting} className="btn btn-dark" style={{ width:'100%', justifyContent:'center', padding:'14px 0', borderRadius:2, fontSize:13, letterSpacing:'.04em', opacity:(!name.trim()||!phone.trim()||(fulfill==='delivery'&&!addr.trim())||submitting)?0.4:1 }}>
+          <button onClick={checkout} disabled={!name.trim()||!phone.trim()||(fulfill==='delivery'&&!addr.trim())||submitting} className="btn btn-dark" style={{ width:'100%', justifyContent:'center', padding:'14px 0', borderRadius:10, fontSize:13, letterSpacing:'.04em', opacity:(!name.trim()||!phone.trim()||(fulfill==='delivery'&&!addr.trim())||submitting)?0.4:1 }}>
             {submitting ? 'Processing…' : `Pay ${ghs(ct)} · MoMo`}
           </button>
           <p style={{ textAlign:'center', fontSize:11, color:'#ccc', marginTop:10 }}>Secured by Paystack</p>
@@ -539,13 +579,13 @@ function Store() {
       {/* ══════ BOTTOM NAV (mobile) ══════ */}
       <nav style={{ position:'fixed', bottom:0, left:0, right:0, background:'rgba(255,255,255,.97)', borderTop:'1px solid #e2e2e2', zIndex:50, display:'flex', justifyContent:'space-around', padding:'0 0 env(safe-area-inset-bottom)', height:58 }}>
         {[['Home','home','/',Ico.home],['Shop','shop','/shop',Ico.grid],['Cart','cart','/cart',Ico.cart],['Track','track','/track',Ico.pin]].map(([l,p,h,ic])=>(
-          <button key={p} onClick={()=>go(p,h)} style={{ flex:1, background:'none', border:'none', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3, color:pg===p?'#111':'#bbb', transition:'color .15s', position:'relative' }}>
+          <button key={p} onClick={()=>go(p,h)} style={{ flex:1, background:'none', border:'none', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3, color:pg===p?'var(--green)':'#bbb', transition:'color .15s', position:'relative' }}>
             <span style={{ position:'relative' }}>
               {ic}
               {p==='cart' && cc>0 && <span style={{ position:'absolute', top:-4, right:-6, width:14, height:14, background:'#111', color:'#fff', borderRadius:'50%', fontSize:8, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{cc}</span>}
             </span>
             <span style={{ fontSize:9, fontWeight:pg===p?600:400, letterSpacing:'.03em' }}>{l}</span>
-            {pg===p && <span style={{ position:'absolute', top:0, left:'50%', transform:'translateX(-50%)', width:20, height:2, background:'#111' }} />}
+            {pg===p && <span style={{ position:'absolute', top:0, left:'50%', transform:'translateX(-50%)', width:20, height:2, background:'var(--green)' }} />}
           </button>
         ))}
       </nav>
