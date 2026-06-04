@@ -2,6 +2,36 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import './admin.css'
 
+/* ─── ICONS (stroke line set, consistent weight) ─── */
+const I = {
+  dashboard: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>,
+  pos: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M2 9h20M8 21h8M12 17v4"/></svg>,
+  invoice: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 3h11l3 3v15a0 0 0 01 0 0H5a0 0 0 01 0 0V3z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>,
+  receipt: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 3v18l2-1.5L9 21l2-1.5L13 21l2-1.5L17 21l2-1.5V3l-2 1.5L15 3l-2 1.5L11 3 9 4.5 7 3 5 4.5z"/><path d="M8 9h8M8 13h6"/></svg>,
+  refund: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 103-7.7L3 8"/></svg>,
+  box: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>,
+  tag: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 13l-7 7-9-9V4h7l9 9z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg>,
+  inbox: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h5l2 3h4l2-3h5"/><path d="M5 5h14l2 7v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6l2-7z"/></svg>,
+  adjust: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>,
+  users: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3 2.7-5 6-5s6 2 6 5"/><path d="M16 5a3 3 0 010 6M22 20c0-2.5-1.5-4.2-4-4.7"/></svg>,
+  expense: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5c0-1 1-1.7 2.5-1.7s2.5.7 2.5 1.7-1 1.5-2.5 1.7-2.5.7-2.5 1.8 1 1.7 2.5 1.7 2.5-.7 2.5-1.7"/></svg>,
+  chart: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 5-7"/></svg>,
+  staff: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="3.5"/><path d="M5 21c0-4 3-6 7-6s7 2 7 6"/></svg>,
+  store: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 9l1-5h14l1 5M4 9v11h16V9M4 9h16M9 20v-6h6v6"/></svg>,
+  out: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>,
+  cart: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h3l2.5 13h11l2-9H6"/></svg>,
+  search: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>,
+  plus: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg>,
+  refresh: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 12a9 9 0 11-2.6-6.4M21 4v4h-4"/></svg>,
+  print: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9V3h12v6M6 18H4a1 1 0 01-1-1v-5a2 2 0 012-2h14a2 2 0 012 2v5a1 1 0 01-1 1h-2M6 14h12v7H6z"/></svg>,
+  x: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18M6 6l12 12"/></svg>,
+  coins: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><ellipse cx="9" cy="6" rx="6" ry="3"/><path d="M3 6v6c0 1.7 2.7 3 6 3s6-1.3 6-3V6"/><path d="M15 12c0 1.7 2.7 3 6 3M15 12v6c0 1.7 2.7 3 6 3s6-1.3 6-3"/></svg>,
+  trend: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 17l6-6 4 4 8-8M21 7v5h-5"/></svg>,
+  star: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3l2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8L6.6 19.6l1-6L3.3 9.4l6-.9z"/></svg>,
+  check: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6L9 17l-5-5"/></svg>,
+  doc: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 2h9l5 5v15H6z"/><path d="M15 2v5h5"/></svg>,
+}
+
 const SUPABASE_URL  = 'https://tgdtjfquwbtvfsdnvvgm.supabase.co'
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnZHRqZnF1d2J0dmZzZG52dmdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NTM4MjUsImV4cCI6MjA5NjAyOTgyNX0.uXUkodx29_LQNU8pkpbxNnYGFgBYmoFTJHtxVWWAt8E'
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON)
@@ -29,19 +59,19 @@ async function uploadImage(file, onProg) {
 /* ── Field helpers ── */
 const Field = ({label,value,onChange,placeholder,type='text',required}) => (
   <div className="field">
-    <label>{label}{required && <span style={{color:'#ef4444'}}> *</span>}</label>
+    <label>{label}{required && <span style={{color:'var(--bad)'}}> *</span>}</label>
     <input type={type} className="field-input" value={value||''} onChange={e=>onChange(e.target.value)} placeholder={placeholder||''}/>
   </div>
 )
 const NumField = ({label,value,onChange,step='0.01',required}) => (
   <div className="field">
-    <label>{label}{required && <span style={{color:'#ef4444'}}> *</span>}</label>
+    <label>{label}{required && <span style={{color:'var(--bad)'}}> *</span>}</label>
     <input type="number" step={step} min="0" className="field-input" value={value||''} onChange={e=>onChange(Number(e.target.value))}/>
   </div>
 )
 const Select = ({label,value,onChange,options,required}) => (
   <div className="field">
-    <label>{label}{required && <span style={{color:'#ef4444'}}> *</span>}</label>
+    <label>{label}{required && <span style={{color:'var(--bad)'}}> *</span>}</label>
     <select className="field-select" value={value||''} onChange={e=>onChange(e.target.value)}>
       <option value="">Select…</option>
       {options.map(o=><option key={o.value||o} value={o.value||o}>{o.label||o}</option>)}
@@ -57,9 +87,8 @@ const TextArea = ({label,value,onChange,placeholder,rows=3}) => (
 
 /* ── Badge ── */
 const Badge = ({status}) => {
-  const map = {Paid:'green',Completed:'green',Pending:'amber','In Stock':'green','Low Stock':'amber',Low:'amber',Critical:'red','Out of Stock':'red',Cancelled:'red',Active:'green',Inactive:'gray',Refunded:'blue',Voided:'red'}
-  const cls = `badge badge-${map[status]||'gray'}`
-  return <span className={cls}>{status}</span>
+  const map = {Paid:'good',Completed:'good','In Stock':'good',Active:'good',Low:'warn','Low Stock':'warn',Pending:'warn',Critical:'bad','Out of Stock':'bad',Cancelled:'bad',Inactive:'dim',Refunded:'good',Voided:'bad'}
+  return <span className={`badge b-${map[status]||'dim'}`}>{status}</span>
 }
 
 /* ── Toggle ── */
@@ -74,14 +103,14 @@ const Toggle = ({on,onToggle,label,sub}) => (
 function Modal({title,onClose,children,wide,footer}) {
   useEffect(()=>{ document.body.style.overflow='hidden'; return()=>{ document.body.style.overflow='' } },[])
   return (
-    <div className="modal-overlay" onClick={e=>e.target.classList.contains('modal-overlay')&&onClose()}>
-      <div className="modal-box" style={{maxWidth:wide?680:480}}>
-        <div className="modal-header">
+    <div className="ovl" onClick={e=>e.target.classList.contains('ovl')&&onClose()}>
+      <div className="modal" style={{maxWidth:wide?680:480}}>
+        <div className="modal-head">
           <span className="modal-title">{title}</span>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <button className="modal-x" onClick={onClose}>{I.x}</button>
         </div>
         <div className="modal-body">{children}</div>
-        {footer && <div className="modal-footer">{footer}</div>}
+        {footer && <div className="modal-foot">{footer}</div>}
       </div>
     </div>
   )
@@ -102,12 +131,12 @@ function ImgUpload({value,onChange}) {
     <div className="field">
       <label>Product Image</label>
       {value&&!busy&&(
-        <div style={{position:'relative',height:130,background:'#f4f6fb',marginBottom:8,overflow:'hidden',borderRadius:12}}>
+        <div style={{position:'relative',height:130,background:'var(--panel-2)',marginBottom:8,overflow:'hidden',borderRadius:12}}>
           <img src={cdn(value,400)} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
           <div style={{position:'absolute',inset:0,background:'rgba(13,27,62,.5)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,opacity:0,transition:'opacity .15s'}}
             onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=0}>
-            <button type="button" className="btn-primary btn-sm" onClick={()=>ref.current?.click()}>Change</button>
-            <button type="button" className="btn-secondary btn-sm" style={{color:'#fff',borderColor:'rgba(255,255,255,.3)',background:'transparent'}} onClick={()=>onChange('')}>Remove</button>
+            <button type="button" className="btn btn-brass btn-sm" onClick={()=>ref.current?.click()}>Change</button>
+            <button type="button" className="btn btn-line btn-sm" style={{color:'#fff',borderColor:'rgba(255,255,255,.3)',background:'transparent'}} onClick={()=>onChange('')}>Remove</button>
           </div>
         </div>
       )}
@@ -115,56 +144,62 @@ function ImgUpload({value,onChange}) {
         <div onClick={()=>!busy&&ref.current?.click()}
           onDragOver={e=>{e.preventDefault();setDrag(true)}} onDragLeave={()=>setDrag(false)}
           onDrop={e=>{e.preventDefault();setDrag(false);handle(e.dataTransfer.files[0])}}
-          style={{height:90,border:`2px dashed ${drag?'#3b82f6':'#ddd'}`,background:drag?'#eff6ff':'#f4f6fb',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:12,marginBottom:8,transition:'all .15s'}}>
+          style={{height:90,border:`2px dashed ${drag?'var(--brass)':'var(--line)'}`,background:drag?'var(--brass-bg)':'var(--bg)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:12,marginBottom:8,transition:'all .15s'}}>
           {busy
-            ? <div style={{textAlign:'center'}}><div style={{fontSize:12,color:'#888',marginBottom:6}}>Uploading {prog}%</div><div style={{width:120,height:3,background:'#e2e2e2',borderRadius:2}}><div style={{height:'100%',background:'#3b82f6',width:`${prog}%`,transition:'width .2s',borderRadius:2}}/></div></div>
-            : <><div style={{fontSize:13,color:'#888',fontWeight:500}}>Drop image or click to upload</div><div style={{fontSize:11,color:'#bbb',marginTop:3}}>JPG / PNG / WebP · max 10 MB</div></>
+            ? <div style={{textAlign:'center'}}><div style={{fontSize:12,color:'var(--ink-2)',marginBottom:6}}>Uploading {prog}%</div><div style={{width:120,height:3,background:'var(--line)',borderRadius:2}}><div style={{height:'100%',background:'var(--brass)',width:`${prog}%`,transition:'width .2s',borderRadius:2}}/></div></div>
+            : <><div style={{fontSize:13,color:'var(--ink-2)',fontWeight:500}}>Drop image or click to upload</div><div style={{fontSize:11,color:'var(--ink-3)',marginTop:3}}>JPG / PNG / WebP · max 10 MB</div></>
           }
         </div>
       )}
-      {value&&!busy&&<button type="button" style={{background:'none',border:'none',cursor:'pointer',fontSize:11,color:'#aaa',marginBottom:6}} onClick={()=>ref.current?.click()}>↑ Upload different image</button>}
+      {value&&!busy&&<button type="button" style={{background:'none',border:'none',cursor:'pointer',fontSize:11,color:'var(--ink-3)',marginBottom:6}} onClick={()=>ref.current?.click()}>↑ Upload different image</button>}
       <input className="field-input" value={value||''} onChange={e=>onChange(e.target.value)} placeholder="Or paste Cloudinary URL…" style={{height:34,fontSize:12}}/>
-      {err&&<p style={{fontSize:11,color:'#ef4444',marginTop:4}}>{err}</p>}
+      {err&&<p style={{fontSize:11,color:'var(--bad)',marginTop:4}}>{err}</p>}
       <input ref={ref} type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files[0];if(f)handle(f);e.target.value=''}}/>
     </div>
   )
 }
 
 /* ── Stat Card ── */
-const StatCard = ({label,value,sub,icon,variant='default'}) => (
-  <div className={`stat-card ${variant}`}>
-    {icon&&<div className="stat-card-icon">{icon}</div>}
-    <div className="stat-card-label">{label}</div>
-    <div className="stat-card-value">{value}</div>
-    {sub&&<div className="stat-card-sub">{sub}</div>}
+/* ── Metric (used in a hairline strip) ── */
+const Metric = ({label,value,sub,icon}) => (
+  <div className="metric">
+    <div className="metric-top">
+      {icon&&<span className="metric-icon">{icon}</span>}
+      <span className="metric-label">{label}</span>
+    </div>
+    <div className="metric-value">{value}</div>
+    {sub&&<div className="metric-sub">{sub}</div>}
   </div>
 )
+const MetricStrip = ({cols,children}) => (
+  <div className="metric-strip" style={{gridTemplateColumns:`repeat(${cols},1fr)`}}>{children}</div>
+)
 
-const Spinner = () => <div style={{textAlign:'center',padding:48,color:'#aaa',fontSize:13,fontWeight:500}}>Loading…</div>
-const Empty = ({text='No data.'}) => <div style={{textAlign:'center',padding:'48px 20px',color:'#bbb',fontSize:13}}><div style={{fontSize:32,marginBottom:8}}>◇</div>{text}</div>
+const Spinner = () => <div className="spin">Loading…</div>
+const Empty = ({text='No data.'}) => <div className="empty">{I.doc}<div>{text}</div></div>
 
 /* ════════════════════
    NAV CONFIG
 ════════════════════ */
 const NAV_SECTIONS = [
   { label:'Sales', items:[
-    {id:'dashboard',label:'Dashboard',icon:'📊'},
-    {id:'pos',label:'POS',icon:'🖥️'},
-    {id:'invoices',label:'Invoices',icon:'📋'},
-    {id:'receipts',label:'Receipts',icon:'🧾'},
-    {id:'refunds',label:'Refunds',icon:'↩️'},
+    {id:'dashboard',label:'Dashboard',icon:I.dashboard},
+    {id:'pos',label:'Point of Sale',icon:I.pos},
+    {id:'invoices',label:'Invoices',icon:I.invoice},
+    {id:'receipts',label:'Receipts',icon:I.receipt},
+    {id:'refunds',label:'Refunds',icon:I.refund},
   ]},
   { label:'Inventory', items:[
-    {id:'products',label:'Products',icon:'📦'},
-    {id:'promos',label:'Promos & Bundles',icon:'🏷️'},
-    {id:'restock',label:'Restock',icon:'📥'},
-    {id:'stock',label:'Stock & Adjust',icon:'📐'},
+    {id:'products',label:'Products',icon:I.box},
+    {id:'promos',label:'Promos & Bundles',icon:I.tag},
+    {id:'restock',label:'Restock',icon:I.inbox},
+    {id:'stock',label:'Stock & Adjust',icon:I.adjust},
   ]},
   { label:'Business', items:[
-    {id:'customers',label:'Customers',icon:'👥'},
-    {id:'expenses',label:'Expenses',icon:'💸'},
-    {id:'reports',label:'Reports',icon:'📈'},
-    {id:'staff',label:'Staff',icon:'👤'},
+    {id:'customers',label:'Customers',icon:I.users},
+    {id:'expenses',label:'Expenses',icon:I.expense},
+    {id:'reports',label:'Reports',icon:I.chart},
+    {id:'staff',label:'Staff',icon:I.staff},
   ]},
 ]
 
@@ -190,19 +225,19 @@ export default function Admin() {
   const activeItem = allItems.find(i=>i.id===tab)
 
   if(!authed) return (
-    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#0d1b3e 0%,#1e2f5a 100%)'}}>
-      <div style={{width:360,background:'#fff',borderRadius:24,padding:36,boxShadow:'0 30px 80px rgba(13,27,62,.35)'}}>
-        <div style={{textAlign:'center',marginBottom:28}}>
-          <div style={{width:52,height:52,background:'linear-gradient(135deg,#2563eb,#3b82f6)',borderRadius:14,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 14px',fontFamily:'var(--serif)',fontSize:26,color:'#fff',boxShadow:'0 6px 20px rgba(59,130,246,.4)'}}>E</div>
-          <div style={{fontSize:20,fontWeight:800,color:'#0d1b3e',marginBottom:2}}>Esterea Home</div>
-          <div style={{fontSize:12,color:'#aaa',letterSpacing:'.03em'}}>Admin Panel</div>
+    <div className="auth-wrap">
+      <div className="auth-card">
+        <div style={{textAlign:'center',marginBottom:26}}>
+          <div className="auth-mark">E</div>
+          <div style={{fontFamily:'var(--serif)',fontSize:22,color:'var(--ink)'}}>Esterea Home</div>
+          <div style={{fontSize:10,letterSpacing:'.22em',textTransform:'uppercase',color:'var(--ink-3)',marginTop:5}}>Admin Access</div>
         </div>
         <div className="field">
           <label>Password</label>
-          <input type="password" className="field-input" value={pass} onChange={e=>{setPass(e.target.value);setErr(false)}} onKeyDown={e=>e.key==='Enter'&&login()} placeholder="Enter password" autoFocus style={{borderColor:err?'#ef4444':undefined}}/>
-          {err&&<div style={{fontSize:11,color:'#ef4444',marginTop:4}}>Incorrect password</div>}
+          <input type="password" className="field-input" value={pass} onChange={e=>{setPass(e.target.value);setErr(false)}} onKeyDown={e=>e.key==='Enter'&&login()} placeholder="Enter password" autoFocus style={{borderColor:err?'var(--bad)':undefined}}/>
+          {err&&<div style={{fontSize:11,color:'var(--bad)',marginTop:6}}>Incorrect password</div>}
         </div>
-        <button className="btn-primary" style={{width:'100%',justifyContent:'center',padding:'13px 0',fontSize:14,borderRadius:12,marginTop:4}} onClick={login}>Sign in</button>
+        <button className="btn btn-brass" style={{width:'100%',justifyContent:'center',padding:'12px 0',fontSize:13,marginTop:4}} onClick={login}>Sign in</button>
       </div>
     </div>
   )
@@ -215,8 +250,10 @@ export default function Admin() {
       <aside className="admin-sidebar" style={{transform:sideOpen?'translateX(0)':undefined}}>
         <div className="sidebar-logo">
           <div className="sidebar-logo-mark">E</div>
-          <div className="sidebar-logo-name">Esterea Home</div>
-          <div className="sidebar-logo-sub">Management</div>
+          <div>
+            <div className="sidebar-logo-name">Esterea Home</div>
+            <div className="sidebar-logo-sub">Management</div>
+          </div>
         </div>
         <nav className="sidebar-nav">
           {NAV_SECTIONS.map(section=>(
@@ -225,7 +262,7 @@ export default function Admin() {
               {section.items.map(item=>(
                 <button key={item.id} className={`nav-item${tab===item.id?' active':''}`}
                   onClick={()=>{setTab(item.id);setSideOpen(false)}}>
-                  <span className="nav-icon">{item.icon}</span>
+                  {item.icon}
                   {item.label}
                 </button>
               ))}
@@ -234,10 +271,10 @@ export default function Admin() {
         </nav>
         <div className="sidebar-footer">
           <a href="/" target="_blank" rel="noreferrer" className="sidebar-footer-btn" style={{textDecoration:'none'}}>
-            <span>🏠</span> View Store
+            {I.store} View Store
           </a>
           <button className="sidebar-footer-btn" onClick={logout}>
-            <span>↗</span> Sign out
+            {I.out} Sign out
           </button>
         </div>
       </aside>
@@ -248,10 +285,13 @@ export default function Admin() {
           <button className="topbar-hamburger" onClick={()=>setSideOpen(o=>!o)}>
             <span style={{width:18}}/><span style={{width:14}}/><span style={{width:18}}/>
           </button>
-          <span className="topbar-title">{activeItem?.label}</span>
-          <span className="topbar-date">{new Date().toLocaleDateString('en-GH',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</span>
+          <div>
+            <div className="topbar-eyebrow">{NAV_SECTIONS.find(s=>s.items.some(i=>i.id===tab))?.label}</div>
+            <div className="topbar-title">{activeItem?.label}</div>
+          </div>
+          <span className="topbar-meta">{new Date().toLocaleDateString('en-GH',{weekday:'long',day:'numeric',month:'short',year:'numeric'})}</span>
         </div>
-        <div className="admin-content fade-in" key={tab}>
+        <div className="admin-content fade" key={tab}>
           {tab==='dashboard' && <Dashboard/>}
           {tab==='pos'       && <POS/>}
           {tab==='invoices'  && <Invoices/>}
@@ -296,20 +336,22 @@ function Dashboard() {
   if(!stats) return <Spinner/>
   return (
     <div>
-      <div className="page-header">
-        <div><div className="page-title">Dashboard</div><div className="page-sub">{new Date().toLocaleDateString('en-GH',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>
-        <button className="btn-secondary" onClick={load}>↻ Refresh</button>
+      <div className="page-head">
+        <div><div className="page-h1">Dashboard</div><div className="page-desc">{new Date().toLocaleDateString('en-GH',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div></div>
+        <button className="btn btn-line" onClick={load}>{I.refresh} Refresh</button>
       </div>
-      <div className="stat-grid">
-        <StatCard label="Today's Revenue" value={ghs(stats.todayRev)} sub={`${stats.todaySales} POS sales`} icon="💰"/>
-        <StatCard label="Total Revenue" value={ghs(stats.revenue)} sub="All time POS" icon="📈" variant="blue"/>
-        <StatCard label="Net Profit" value={ghs(stats.net)} sub="After expenses" icon="✦" variant={stats.net>=0?'green':'red'}/>
-        <StatCard label="Total Expenses" value={ghs(stats.expenses)} sub="All recorded" icon="💸" variant="purple"/>
-        <StatCard label="Products" value={stats.products} sub="In catalogue" icon="📦" variant="teal"/>
-        <StatCard label="Customers" value={stats.customers} sub="Registered" icon="👥" variant="amber"/>
-        <StatCard label="Online Orders" value={stats.orders} sub={`${stats.pending} pending`} icon="📋"/>
-        <StatCard label="Orders Paid" value={stats.paid} sub={ghs(stats.onlineRev)} icon="✓" variant="green"/>
-      </div>
+      <MetricStrip cols={4}>
+        <Metric label="Today's Revenue" value={ghs(stats.todayRev)} sub={<><b>{stats.todaySales}</b> POS sales</>} icon={I.coins}/>
+        <Metric label="Total Revenue" value={ghs(stats.revenue)} sub="All-time POS" icon={I.trend}/>
+        <Metric label="Net Profit" value={ghs(stats.net)} sub="After expenses" icon={I.star}/>
+        <Metric label="Total Expenses" value={ghs(stats.expenses)} sub="All recorded" icon={I.expense}/>
+      </MetricStrip>
+      <MetricStrip cols={4}>
+        <Metric label="Products" value={stats.products} sub="In catalogue" icon={I.box}/>
+        <Metric label="Customers" value={stats.customers} sub="Registered" icon={I.users}/>
+        <Metric label="Online Orders" value={stats.orders} sub={<><b>{stats.pending}</b> pending</>} icon={I.invoice}/>
+        <Metric label="Orders Paid" value={stats.paid} sub={ghs(stats.onlineRev)} icon={I.check}/>
+      </MetricStrip>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(320px,1fr))',gap:16}}>
         <RecentOrders/>
         <LowStockWidget/>
@@ -322,10 +364,10 @@ function RecentOrders() {
   useEffect(()=>{ supabase.from('whatsapp_orders').select('order_no,customer_name,total,status').order('created_at',{ascending:false}).limit(6).then(({data})=>setOrders(data||[])) },[])
   return (
     <div className="panel">
-      <div className="panel-header"><span className="panel-title">Recent Online Orders</span></div>
+      <div className="panel-head"><span className="panel-title">Recent Online Orders</span></div>
       {orders.map(o=>(
         <div key={o.order_no} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
-          <div><div style={{fontSize:13,fontWeight:700}}>{o.customer_name||'Customer'}</div><div style={{fontSize:11,color:'#aaa',fontFamily:'monospace'}}>{o.order_no}</div></div>
+          <div><div style={{fontSize:13,fontWeight:700}}>{o.customer_name||'Customer'}</div><div style={{fontSize:11,color:'var(--ink-3)',fontFamily:'monospace'}}>{o.order_no}</div></div>
           <div style={{textAlign:'right',display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}><div style={{fontSize:14,fontWeight:800}}>{ghs(o.total)}</div><Badge status={o.status}/></div>
         </div>
       ))}
@@ -338,12 +380,12 @@ function LowStockWidget() {
   useEffect(()=>{ supabase.from('products').select('name,quantity').lte('quantity',10).order('quantity').limit(8).then(({data})=>setItems(data||[])) },[])
   return (
     <div className="panel">
-      <div className="panel-header"><span className="panel-title">⚠ Low Stock Alert</span></div>
-      {items.length===0?<div style={{padding:'20px',textAlign:'center'}}><span style={{fontSize:13,color:'#aaa'}}>All stock levels OK ✓</span></div>:items.map((p,i)=>(
+      <div className="panel-head"><span className="panel-title">Low Stock</span></div>
+      {items.length===0?<div style={{padding:'20px',textAlign:'center'}}><span style={{fontSize:13,color:'var(--ink-3)'}}>All stock levels healthy</span></div>:items.map((p,i)=>(
         <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
           <div style={{fontSize:13,fontWeight:600}}>{p.name}</div>
           <div style={{display:'flex',alignItems:'center',gap:8}}>
-            <span style={{fontSize:16,fontWeight:800,color:p.quantity===0?'#ef4444':p.quantity<=3?'#ef4444':'#f59e0b'}}>{p.quantity}</span>
+            <span style={{fontSize:16,fontWeight:800,color:p.quantity===0?'var(--bad)':p.quantity<=3?'var(--bad)':'var(--warn)'}}>{p.quantity}</span>
             <Badge status={p.quantity===0?'Out of Stock':p.quantity<=3?'Critical':'Low Stock'}/>
           </div>
         </div>
@@ -392,35 +434,34 @@ function POS() {
 
   return (
     <div>
-      {toast&&<div style={{position:'fixed',top:70,left:'50%',transform:'translateX(-50%)',background:'#0d1b3e',color:'#fff',padding:'8px 20px',borderRadius:20,fontSize:12,fontWeight:600,zIndex:300,whiteSpace:'nowrap',boxShadow:'0 4px 20px rgba(0,0,0,.2)'}}>{toast}</div>}
+      {toast&&<div style={{position:'fixed',top:70,left:'50%',transform:'translateX(-50%)',background:'var(--ink)',color:'#fff',padding:'8px 20px',borderRadius:20,fontSize:12,fontWeight:600,zIndex:300,whiteSpace:'nowrap',boxShadow:'0 4px 20px rgba(0,0,0,.2)'}}>{toast}</div>}
       {lastReceipt&&(
-        <Modal title="Receipt" onClose={()=>setLastReceipt(null)} footer={<><button className="btn-primary" onClick={()=>window.print()}>🖨 Print</button><button className="btn-secondary" onClick={()=>setLastReceipt(null)}>Close</button></>}>
+        <Modal title="Receipt" onClose={()=>setLastReceipt(null)} footer={<><button className="btn btn-brass" onClick={()=>window.print()}>{I.print} Print</button><button className="btn btn-line" onClick={()=>setLastReceipt(null)}>Close</button></>}>
           <div style={{textAlign:'center',marginBottom:20,paddingTop:8}}>
-            <div style={{fontFamily:'var(--serif)',fontSize:22,fontWeight:600,color:'#0d1b3e'}}>Esterea Home</div>
-            <div style={{fontSize:11,color:'#aaa'}}>Accra, Ghana · 0547927722</div>
-            <div style={{fontSize:11,color:'#aaa',marginTop:2}}>{fmt(lastReceipt.date)}</div>
-            <div style={{fontSize:10,fontFamily:'monospace',color:'#ccc',marginTop:2}}>{lastReceipt.receipt_no}</div>
+            <div style={{fontFamily:'var(--serif)',fontSize:22,fontWeight:600,color:'var(--ink)'}}>Esterea Home</div>
+            <div style={{fontSize:11,color:'var(--ink-3)'}}>Accra, Ghana · 0547927722</div>
+            <div style={{fontSize:11,color:'var(--ink-3)',marginTop:2}}>{fmt(lastReceipt.date)}</div>
+            <div style={{fontSize:10,fontFamily:'monospace',color:'var(--ink-3)',marginTop:2}}>{lastReceipt.receipt_no}</div>
           </div>
           {lastReceipt.items.map((it,i)=>(
-            <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'8px 0',borderBottom:'1px solid #f5f5f5'}}>
+            <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'8px 0',borderBottom:'1px solid var(--line-soft)'}}>
               <span>{it.qty}× {it.name}</span><span style={{fontWeight:700}}>{ghs((it.price||0)*it.qty)}</span>
             </div>
           ))}
-          {lastReceipt.discount>0&&<div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#ef4444',marginTop:8}}><span>Discount</span><span>- {ghs(lastReceipt.discount)}</span></div>}
-          <div style={{display:'flex',justifyContent:'space-between',fontSize:18,fontWeight:800,marginTop:12,padding:'12px 0',borderTop:'2px solid #0d1b3e',color:'#0d1b3e'}}><span>Total</span><span>{ghs(lastReceipt.total)}</span></div>
-          <div style={{fontSize:12,color:'#888',marginTop:4}}>Payment: {lastReceipt.payment}</div>
-          {lastReceipt.customer_name&&<div style={{fontSize:12,color:'#aaa'}}>Customer: {lastReceipt.customer_name}</div>}
-          <div style={{textAlign:'center',fontSize:11,color:'#aaa',marginTop:20,padding:'12px',background:'#f4f6fb',borderRadius:10}}>Thank you for shopping with us!</div>
+          {lastReceipt.discount>0&&<div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'var(--bad)',marginTop:8}}><span>Discount</span><span>- {ghs(lastReceipt.discount)}</span></div>}
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:18,fontWeight:800,marginTop:12,padding:'12px 0',borderTop:'2px solid var(--ink)',color:'var(--ink)'}}><span>Total</span><span>{ghs(lastReceipt.total)}</span></div>
+          <div style={{fontSize:12,color:'var(--ink-2)',marginTop:4}}>Payment: {lastReceipt.payment}</div>
+          {lastReceipt.customer_name&&<div style={{fontSize:12,color:'var(--ink-3)'}}>Customer: {lastReceipt.customer_name}</div>}
+          <div style={{textAlign:'center',fontSize:11,color:'var(--ink-3)',marginTop:20,padding:'12px',background:'var(--panel-2)',borderRadius:10}}>Thank you for shopping with us!</div>
         </Modal>
       )}
-      <div className="page-header">
-        <div><div className="page-title">Point of Sale</div><div className="page-sub">In-store sales terminal</div></div>
+      <div className="page-head">
+        <div><div className="page-h1">Point of Sale</div><div className="page-desc">In-store sales terminal</div></div>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'1fr 330px',gap:16,alignItems:'start'}}>
         {/* Products */}
         <div>
-          <div className="search-box" style={{marginBottom:14}}>
-            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…"/>
+          <div className="search" style={{marginBottom:14}}>{I.search}<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…"/>
           </div>
           <div className="pos-product-grid">
             {shown.map(p=>(
@@ -438,9 +479,9 @@ function POS() {
         </div>
 
         {/* Cart */}
-        <div className="cart-panel">
-          <div className="cart-panel-header">
-            <span className="cart-panel-title">🛒 Cart {cart.length>0&&<span style={{background:'rgba(59,130,246,.3)',color:'#93c5fd',borderRadius:10,padding:'1px 8px',fontSize:11,marginLeft:6}}>{cart.reduce((a,c)=>a+c.qty,0)}</span>}</span>
+        <div className="cart">
+          <div className="cart-head">
+            <span className="cart-head-title">Cart {cart.length>0&&<span style={{background:'var(--brass-bg)',color:'var(--brass)',borderRadius:10,padding:'1px 8px',fontSize:11,marginLeft:6}}>{cart.reduce((a,c)=>a+c.qty,0)}</span>}</span>
             {cart.length>0&&<button onClick={()=>setCart([])} style={{background:'none',border:'none',cursor:'pointer',fontSize:11,color:'rgba(255,255,255,.3)',textDecoration:'underline'}}>Clear</button>}
           </div>
           {cart.length===0
@@ -471,7 +512,7 @@ function POS() {
               <span className="cart-total-label">Total</span>
               <span className="cart-total-value">{ghs(total)}</span>
             </div>
-            {total>0&&<div style={{fontSize:11,color:'#34d399',marginTop:3}}>Profit: {ghs(profit)}</div>}
+            {total>0&&<div style={{fontSize:11,color:'var(--good)',marginTop:3}}>Profit: {ghs(profit)}</div>}
           </div>
           <div className="pay-methods">
             {['Cash','MoMo','Paystack'].map(m=>(
@@ -508,43 +549,42 @@ function Invoices() {
   return (
     <div>
       {detail&&(
-        <Modal title={`Invoice ${detail.order_no}`} onClose={()=>setDetail(null)} footer={<button className="btn-secondary" onClick={()=>setDetail(null)}>Close</button>}>
+        <Modal title={`Invoice ${detail.order_no}`} onClose={()=>setDetail(null)} footer={<button className="btn btn-line" onClick={()=>setDetail(null)}>Close</button>}>
           <div style={{display:'grid',gap:2}}>
             {[['Customer',detail.customer_name],['Phone',detail.customer_phone],['Date',fmt(detail.date||detail.created_at)],['Address',detail.address],['Notes',detail.notes]].map(([k,v])=>v&&(
-              <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'9px 0',borderBottom:'1px solid #f5f5f5',fontSize:13}}>
-                <span style={{color:'#777'}}>{k}</span><span style={{fontWeight:600}}>{v}</span>
+              <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'9px 0',borderBottom:'1px solid var(--line-soft)',fontSize:13}}>
+                <span style={{color:'var(--ink-2)'}}>{k}</span><span style={{fontWeight:600}}>{v}</span>
               </div>
             ))}
-            <div style={{padding:'9px 0',borderBottom:'1px solid #f5f5f5',display:'flex',justifyContent:'space-between',fontSize:13}}><span style={{color:'#777'}}>Status</span><Badge status={detail.status}/></div>
+            <div style={{padding:'9px 0',borderBottom:'1px solid var(--line-soft)',display:'flex',justifyContent:'space-between',fontSize:13}}><span style={{color:'var(--ink-2)'}}>Status</span><Badge status={detail.status}/></div>
           </div>
           <div style={{marginTop:16}}>
-            <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:'#aaa',textTransform:'uppercase',letterSpacing:'.05em'}}>Items</div>
+            <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:'var(--ink-3)',textTransform:'uppercase',letterSpacing:'.05em'}}>Items</div>
             {(detail.items?(typeof detail.items==='string'?JSON.parse(detail.items):detail.items):[]).map((it,i)=>(
-              <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'8px 0',borderBottom:'1px solid #f5f5f5'}}>
+              <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'8px 0',borderBottom:'1px solid var(--line-soft)'}}>
                 <span>{it.qty}× {it.name}</span><span style={{fontWeight:700}}>{ghs((it.price||0)*it.qty)}</span>
               </div>
             ))}
-            <div style={{display:'flex',justifyContent:'space-between',fontSize:16,fontWeight:800,marginTop:10,paddingTop:10,borderTop:'2px solid #0d1b3e',color:'#0d1b3e'}}><span>Total</span><span>{ghs(detail.total)}</span></div>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:16,fontWeight:800,marginTop:10,paddingTop:10,borderTop:'2px solid var(--ink)',color:'var(--ink)'}}><span>Total</span><span>{ghs(detail.total)}</span></div>
           </div>
         </Modal>
       )}
-      <div className="page-header">
-        <div><div className="page-title">Invoices</div><div className="page-sub">Online orders & payments</div></div>
-        <button className="btn-secondary" onClick={load}>↻ Refresh</button>
+      <div className="page-head">
+        <div><div className="page-h1">Invoices</div><div className="page-desc">Online orders & payments</div></div>
+        <button className="btn btn-line" onClick={load}>{I.refresh} Refresh</button>
       </div>
-      <div className="stat-grid" style={{gridTemplateColumns:'repeat(4,1fr)'}}>
-        <StatCard label="Paid" value={counts.Paid||0} sub="completed" variant="green"/>
-        <StatCard label="Pending" value={counts.Pending||0} sub="awaiting" variant="amber"/>
-        <StatCard label="Completed" value={counts.Completed||0} sub="delivered"/>
-        <StatCard label="Cancelled" value={counts.Cancelled||0} sub="cancelled" variant="red"/>
-      </div>
+      <MetricStrip cols={4}>
+        <Metric label="Paid" value={counts.Paid||0} sub="completed" icon={I.check}/>
+        <Metric label="Pending" value={counts.Pending||0} sub="awaiting payment" icon={I.refund}/>
+        <Metric label="Completed" value={counts.Completed||0} sub="delivered" icon={I.box}/>
+        <Metric label="Cancelled" value={counts.Cancelled||0} sub="cancelled" icon={I.x}/>
+      </MetricStrip>
       <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
-        <div className="search-box" style={{flex:1,minWidth:220}}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name, phone, or order #…"/>
+        <div className="search" style={{flex:1,minWidth:220}}>{I.search}<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name, phone, or order #…"/>
         </div>
-        <div className="filter-tabs">
+        <div className="tabs">
           {[['all','All'],['Pending','Pending'],['Paid','Paid'],['Completed','Completed'],['Cancelled','Cancelled']].map(([v,l])=>(
-            <button key={v} className={`filter-tab${filter===v?' active':''}`} onClick={()=>setFilter(v)}>{l}</button>
+            <button key={v} className={`tab${filter===v?' active':''}`} onClick={()=>setFilter(v)}>{l}</button>
           ))}
         </div>
       </div>
@@ -556,21 +596,21 @@ function Invoices() {
               <div key={o.id} style={{padding:'16px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}}>
                   <div>
-                    <div style={{fontSize:10,color:'#aaa',fontFamily:'monospace',marginBottom:2}}>{o.order_no}</div>
+                    <div style={{fontSize:10,color:'var(--ink-3)',fontFamily:'monospace',marginBottom:2}}>{o.order_no}</div>
                     <div style={{fontSize:15,fontWeight:700}}>{o.customer_name||'Customer'}</div>
-                    <div style={{fontSize:12,color:'#888'}}>{o.customer_phone} · {fmtDate(o.date||o.created_at)}</div>
+                    <div style={{fontSize:12,color:'var(--ink-2)'}}>{o.customer_phone} · {fmtDate(o.date||o.created_at)}</div>
                   </div>
                   <div style={{textAlign:'right'}}>
-                    <div style={{fontSize:18,fontWeight:800,color:'#0d1b3e'}}>{ghs(o.total)}</div>
+                    <div style={{fontSize:18,fontWeight:800,color:'var(--ink)'}}>{ghs(o.total)}</div>
                     <Badge status={o.status}/>
                   </div>
                 </div>
-                {items.length>0&&<p style={{fontSize:12,color:'#aaa',marginBottom:6}}>{items.map(i=>`${i.qty}× ${i.name}`).join(' · ')}</p>}
+                {items.length>0&&<p style={{fontSize:12,color:'var(--ink-3)',marginBottom:6}}>{items.map(i=>`${i.qty}× ${i.name}`).join(' · ')}</p>}
                 <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                  {o.status==='Pending'&&<button className="btn-primary btn-sm" onClick={()=>upd(o.id,'Paid')}>Mark Paid</button>}
-                  {o.status==='Paid'&&<button className="btn-primary btn-sm" onClick={()=>upd(o.id,'Completed')}>Mark Completed</button>}
-                  {!['Cancelled','Completed'].includes(o.status)&&<button className="btn-danger btn-sm" onClick={()=>upd(o.id,'Cancelled')}>Cancel</button>}
-                  <button className="btn-secondary btn-sm" onClick={()=>setDetail(o)}>View Details</button>
+                  {o.status==='Pending'&&<button className="btn btn-brass btn-sm" onClick={()=>upd(o.id,'Paid')}>Mark Paid</button>}
+                  {o.status==='Paid'&&<button className="btn btn-brass btn-sm" onClick={()=>upd(o.id,'Completed')}>Mark Completed</button>}
+                  {!['Cancelled','Completed'].includes(o.status)&&<button className="btn btn-bad btn-sm" onClick={()=>upd(o.id,'Cancelled')}>Cancel</button>}
+                  <button className="btn btn-line btn-sm" onClick={()=>setDetail(o)}>View Details</button>
                 </div>
               </div>
             )
@@ -593,30 +633,29 @@ function Receipts() {
   return (
     <div>
       {detail&&(
-        <Modal title={`Receipt ${detail.receipt_no}`} onClose={()=>setDetail(null)} footer={<><button className="btn-primary" onClick={()=>window.print()}>🖨 Print</button><button className="btn-secondary" onClick={()=>setDetail(null)}>Close</button></>}>
+        <Modal title={`Receipt ${detail.receipt_no}`} onClose={()=>setDetail(null)} footer={<><button className="btn btn-brass" onClick={()=>window.print()}>{I.print} Print</button><button className="btn btn-line" onClick={()=>setDetail(null)}>Close</button></>}>
           <div style={{textAlign:'center',marginBottom:20,paddingTop:8}}>
-            <div style={{fontFamily:'var(--serif)',fontSize:22,color:'#0d1b3e'}}>Esterea Home</div>
-            <div style={{fontSize:11,color:'#aaa'}}>Accra, Ghana · 0547927722</div>
-            <div style={{fontSize:11,color:'#aaa',marginTop:2}}>{fmt(detail.date)}</div>
-            <div style={{fontSize:10,fontFamily:'monospace',color:'#ccc'}}>{detail.receipt_no}</div>
+            <div style={{fontFamily:'var(--serif)',fontSize:22,color:'var(--ink)'}}>Esterea Home</div>
+            <div style={{fontSize:11,color:'var(--ink-3)'}}>Accra, Ghana · 0547927722</div>
+            <div style={{fontSize:11,color:'var(--ink-3)',marginTop:2}}>{fmt(detail.date)}</div>
+            <div style={{fontSize:10,fontFamily:'monospace',color:'var(--ink-3)'}}>{detail.receipt_no}</div>
           </div>
           {(detail.items?(typeof detail.items==='string'?JSON.parse(detail.items):detail.items):[]).map((it,i)=>(
-            <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'8px 0',borderBottom:'1px solid #f5f5f5'}}>
+            <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'8px 0',borderBottom:'1px solid var(--line-soft)'}}>
               <span>{it.qty}× {it.name}</span><span style={{fontWeight:700}}>{ghs((it.price||0)*it.qty)}</span>
             </div>
           ))}
-          {detail.discount>0&&<div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#ef4444',marginTop:8}}><span>Discount</span><span>-{ghs(detail.discount)}</span></div>}
-          <div style={{display:'flex',justifyContent:'space-between',fontSize:18,fontWeight:800,marginTop:10,paddingTop:10,borderTop:'2px solid #0d1b3e',color:'#0d1b3e'}}><span>Total</span><span>{ghs(detail.total)}</span></div>
-          <div style={{fontSize:12,color:'#888',marginTop:4}}>Payment: {detail.payment}</div>
-          {detail.customer_name&&<div style={{fontSize:12,color:'#aaa'}}>Customer: {detail.customer_name}</div>}
-          <div style={{textAlign:'center',fontSize:11,color:'#aaa',marginTop:20}}>Thank you for shopping with us!</div>
+          {detail.discount>0&&<div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'var(--bad)',marginTop:8}}><span>Discount</span><span>-{ghs(detail.discount)}</span></div>}
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:18,fontWeight:800,marginTop:10,paddingTop:10,borderTop:'2px solid var(--ink)',color:'var(--ink)'}}><span>Total</span><span>{ghs(detail.total)}</span></div>
+          <div style={{fontSize:12,color:'var(--ink-2)',marginTop:4}}>Payment: {detail.payment}</div>
+          {detail.customer_name&&<div style={{fontSize:12,color:'var(--ink-3)'}}>Customer: {detail.customer_name}</div>}
+          <div style={{textAlign:'center',fontSize:11,color:'var(--ink-3)',marginTop:20}}>Thank you for shopping with us!</div>
         </Modal>
       )}
-      <div className="page-header">
-        <div><div className="page-title">Receipts</div><div className="page-sub">{sales.length} receipts · {ghs(total)} revenue · {ghs(profit)} profit</div></div>
+      <div className="page-head">
+        <div><div className="page-h1">Receipts</div><div className="page-desc">{sales.length} receipts · {ghs(total)} revenue · {ghs(profit)} profit</div></div>
       </div>
-      <div className="search-box" style={{maxWidth:380,marginBottom:14}}>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search receipt, customer…"/>
+      <div className="search" style={{maxWidth:380,marginBottom:14}}>{I.search}<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search receipt, customer…"/>
       </div>
       {loading?<Spinner/>:shown.length===0?<Empty text="No receipts."/>:(
         <div className="panel">
@@ -625,14 +664,14 @@ function Receipts() {
             return (
               <div key={s.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
                 <div>
-                  <div style={{fontSize:10,color:'#aaa',fontFamily:'monospace'}}>{s.receipt_no}</div>
+                  <div style={{fontSize:10,color:'var(--ink-3)',fontFamily:'monospace'}}>{s.receipt_no}</div>
                   <div style={{fontSize:15,fontWeight:700}}>{ghs(s.total)}</div>
-                  <div style={{fontSize:11,color:'#888'}}>{s.payment} · Profit: <span style={{color:'#10b981',fontWeight:700}}>{ghs(s.profit)}</span></div>
-                  {items.length>0&&<div style={{fontSize:11,color:'#aaa',marginTop:2}}>{items.map(i=>`${i.qty}× ${i.name}`).join(' · ')}</div>}
+                  <div style={{fontSize:11,color:'var(--ink-2)'}}>{s.payment} · Profit: <span style={{color:'var(--good)',fontWeight:700}}>{ghs(s.profit)}</span></div>
+                  {items.length>0&&<div style={{fontSize:11,color:'var(--ink-3)',marginTop:2}}>{items.map(i=>`${i.qty}× ${i.name}`).join(' · ')}</div>}
                 </div>
                 <div style={{textAlign:'right',display:'flex',flexDirection:'column',alignItems:'flex-end',gap:6}}>
-                  <div style={{fontSize:11,color:'#aaa'}}>{fmtDate(s.date)}</div>
-                  <button className="btn-secondary btn-sm" onClick={()=>setDetail(s)}>View</button>
+                  <div style={{fontSize:11,color:'var(--ink-3)'}}>{fmtDate(s.date)}</div>
+                  <button className="btn btn-line btn-sm" onClick={()=>setDetail(s)}>View</button>
                 </div>
               </div>
             )
@@ -660,7 +699,7 @@ function Refunds() {
   return (
     <div>
       {modal&&(
-        <Modal title="Issue Refund" onClose={()=>setModal(false)} footer={<><button className="btn-primary" onClick={save} disabled={saving||!form.order_ref||!form.amount}>{saving?'Saving…':'Issue Refund'}</button><button className="btn-secondary" onClick={()=>setModal(false)}>Cancel</button></>}>
+        <Modal title="Issue Refund" onClose={()=>setModal(false)} footer={<><button className="btn btn-brass" onClick={save} disabled={saving||!form.order_ref||!form.amount}>{saving?'Saving…':'Issue Refund'}</button><button className="btn btn-line" onClick={()=>setModal(false)}>Cancel</button></>}>
           <Field label="Order / Receipt Reference" value={form.order_ref} onChange={v=>setForm({...form,order_ref:v})} placeholder="e.g. POS-ABC123" required/>
           <NumField label="Refund Amount (GH₵)" value={form.amount} onChange={v=>setForm({...form,amount:v})} required/>
           <Select label="Refund Method" value={form.payment_method} onChange={v=>setForm({...form,payment_method:v})} options={['Cash','MoMo','Paystack']}/>
@@ -668,21 +707,21 @@ function Refunds() {
           <Field label="Approved by (Staff)" value={form.staff_name} onChange={v=>setForm({...form,staff_name:v})} placeholder="Staff name"/>
         </Modal>
       )}
-      <div className="page-header">
-        <div><div className="page-title">Refunds</div><div className="page-sub">{refunds.length} issued · {ghs(total)} total</div></div>
-        <button className="btn-primary" onClick={()=>setModal(true)}>+ Issue Refund</button>
+      <div className="page-head">
+        <div><div className="page-h1">Refunds</div><div className="page-desc">{refunds.length} issued · {ghs(total)} total</div></div>
+        <button className="btn btn-brass" onClick={()=>setModal(true)}>{I.plus} Issue Refund</button>
       </div>
       {loading?<Spinner/>:refunds.length===0?<Empty text="No refunds issued."/>:(
         <div className="panel">
           {refunds.map(r=>(
             <div key={r.id} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'14px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
               <div>
-                <div style={{fontSize:11,color:'#aaa',marginBottom:2}}>Ref: {r.order_ref}</div>
-                <div style={{fontSize:15,fontWeight:700,color:'#ef4444'}}>{ghs(r.amount)}</div>
-                <div style={{fontSize:11,color:'#888'}}>{r.payment_method}{r.staff_name&&` · ${r.staff_name}`}</div>
-                {r.reason&&<div style={{fontSize:11,color:'#aaa',marginTop:2}}>{r.reason}</div>}
+                <div style={{fontSize:11,color:'var(--ink-3)',marginBottom:2}}>Ref: {r.order_ref}</div>
+                <div style={{fontSize:15,fontWeight:700,color:'var(--bad)'}}>{ghs(r.amount)}</div>
+                <div style={{fontSize:11,color:'var(--ink-2)'}}>{r.payment_method}{r.staff_name&&` · ${r.staff_name}`}</div>
+                {r.reason&&<div style={{fontSize:11,color:'var(--ink-3)',marginTop:2}}>{r.reason}</div>}
               </div>
-              <div style={{textAlign:'right'}}><Badge status="Refunded"/><div style={{fontSize:11,color:'#aaa',marginTop:4}}>{fmtDate(r.created_at)}</div></div>
+              <div style={{textAlign:'right'}}><Badge status="Refunded"/><div style={{fontSize:11,color:'var(--ink-3)',marginTop:4}}>{fmtDate(r.created_at)}</div></div>
             </div>
           ))}
         </div>
@@ -723,7 +762,7 @@ function Products() {
       )}
       {editing&&(
         <Modal title={editing.id?'Edit Product':'New Product'} onClose={()=>setEditing(null)} wide
-          footer={<><button className="btn-primary" onClick={save} disabled={saving||!editing.name?.trim()}>{saving?'Saving…':editing.id?'Save Changes':'Add Product'}</button><button className="btn-secondary" onClick={()=>setEditing(null)}>Cancel</button></>}>
+          footer={<><button className="btn btn-brass" onClick={save} disabled={saving||!editing.name?.trim()}>{saving?'Saving…':editing.id?'Save Changes':'Add Product'}</button><button className="btn btn-line" onClick={()=>setEditing(null)}>Cancel</button></>}>
           <ImgUpload value={editing.image||''} onChange={v=>setEditing({...editing,image:v})}/>
           <div style={{display:'grid',gap:0,borderTop:'1px solid #f0f0f0',paddingTop:14}}>
             <Field label="Product Name" value={editing.name} onChange={v=>setEditing({...editing,name:v})} placeholder="e.g. Rattan Side Table" required/>
@@ -731,15 +770,15 @@ function Products() {
             <TextArea label="Description" value={editing.description} onChange={v=>setEditing({...editing,description:v})} placeholder="Short description shown to customers" rows={2}/>
           </div>
           <div style={{border:'1px solid #f0f0f0',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
-            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'#aaa',marginBottom:12}}>Pricing</div>
+            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--ink-3)',marginBottom:12}}>Pricing</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
               <NumField label="Selling Price (GH₵)" value={editing.price} onChange={v=>setEditing({...editing,price:v})} required/>
               <NumField label="Cost Price (GH₵)" value={editing.cost_price} onChange={v=>setEditing({...editing,cost_price:v})}/>
             </div>
-            {editing.price>0&&editing.cost_price>0&&<div style={{fontSize:12,color:'#10b981',marginTop:4,fontWeight:600}}>Margin: {ghs(editing.price-editing.cost_price)} ({((editing.price-editing.cost_price)/editing.price*100).toFixed(0)}%)</div>}
+            {editing.price>0&&editing.cost_price>0&&<div style={{fontSize:12,color:'var(--good)',marginTop:4,fontWeight:600}}>Margin: {ghs(editing.price-editing.cost_price)} ({((editing.price-editing.cost_price)/editing.price*100).toFixed(0)}%)</div>}
           </div>
           <div style={{border:'1px solid #f0f0f0',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
-            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'#aaa',marginBottom:12}}>Stock & Wholesale</div>
+            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--ink-3)',marginBottom:12}}>Stock & Wholesale</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
               <NumField label="Opening Qty" value={editing.quantity} onChange={v=>setEditing({...editing,quantity:v})} step="1"/>
               <NumField label="Wholesale Price" value={editing.wholesale_price} onChange={v=>setEditing({...editing,wholesale_price:v})}/>
@@ -749,23 +788,22 @@ function Products() {
           <Toggle on={editing.visible} onToggle={()=>setEditing({...editing,visible:!editing.visible})} label="Visible in Store" sub="Customers can see and buy this product"/>
         </Modal>
       )}
-      <div className="page-header">
-        <div><div className="page-title">Products</div><div className="page-sub">{products.length} products · {products.filter(p=>(p.quantity||0)<=10).length} low/out of stock</div></div>
-        <button className="btn-primary" onClick={()=>setEditing(blank)}>+ Add Product</button>
+      <div className="page-head">
+        <div><div className="page-h1">Products</div><div className="page-desc">{products.length} products · {products.filter(p=>(p.quantity||0)<=10).length} low/out of stock</div></div>
+        <button className="btn btn-brass" onClick={()=>setEditing(blank)}>{I.plus} Add Product</button>
       </div>
       <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
-        <div className="search-box" style={{flex:1,minWidth:200}}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…"/>
+        <div className="search" style={{flex:1,minWidth:200}}>{I.search}<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…"/>
         </div>
-        <div className="filter-tabs">
+        <div className="tabs">
           {[['all','All'],['active','Active'],['hidden','Hidden'],['low','Low Stock']].map(([v,l])=>(
-            <button key={v} className={`filter-tab${filter===v?' active':''}`} onClick={()=>setFilter(v)}>{l}</button>
+            <button key={v} className={`tab${filter===v?' active':''}`} onClick={()=>setFilter(v)}>{l}</button>
           ))}
         </div>
       </div>
       {loading?<Spinner/>:filtered.length===0?<Empty text="No products."/>:(
         <div className="panel" style={{overflow:'hidden'}}>
-          <table className="data-table">
+          <table className="tbl">
             <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Cost</th><th>Stock</th><th>Visibility</th><th style={{textAlign:'right'}}>Actions</th></tr></thead>
             <tbody>
               {filtered.map(p=>{
@@ -775,12 +813,12 @@ function Products() {
                     <td>
                       <div style={{display:'flex',alignItems:'center',gap:12}}>
                         {p.image?<img src={cdn(p.image,84)} className="inv-row-img" alt=""/>:<div className="inv-row-img" style={{display:'flex',alignItems:'center',justifyContent:'center',color:'#ddd',fontFamily:'var(--serif)',fontSize:18}}>E</div>}
-                        <div><div style={{fontSize:13,fontWeight:700,color:'#0d1b3e'}}>{p.name}</div></div>
+                        <div><div style={{fontSize:13,fontWeight:700,color:'var(--ink)'}}>{p.name}</div></div>
                       </div>
                     </td>
-                    <td style={{color:'#888',fontSize:12}}>{p.category||'—'}</td>
+                    <td style={{color:'var(--ink-2)',fontSize:12}}>{p.category||'—'}</td>
                     <td><span style={{fontSize:14,fontWeight:800}}>{ghs(p.price)}</span></td>
-                    <td style={{color:'#aaa',fontSize:12}}>{p.cost_price?ghs(p.cost_price):'—'}</td>
+                    <td style={{color:'var(--ink-3)',fontSize:12}}>{p.cost_price?ghs(p.cost_price):'—'}</td>
                     <td>
                       <div style={{display:'flex',alignItems:'center',gap:8}}>
                         <span className="stock-num">{p.quantity||0}</span>
@@ -790,10 +828,10 @@ function Products() {
                     <td><Badge status={p.visible?'Active':'Inactive'}/></td>
                     <td>
                       <div style={{display:'flex',gap:4,justifyContent:'flex-end'}}>
-                        <button className="btn-secondary btn-sm" onClick={()=>setStockModal(p)}>± Stock</button>
-                        <button className="btn-secondary btn-sm" onClick={()=>toggleVis(p.id,p.visible)}>{p.visible?'Hide':'Show'}</button>
-                        <button className="btn-secondary btn-sm" onClick={()=>setEditing({...p})}>Edit</button>
-                        <button className="btn-danger btn-sm" onClick={()=>del(p.id)}>Del</button>
+                        <button className="btn btn-line btn-sm" onClick={()=>setStockModal(p)}>± Stock</button>
+                        <button className="btn btn-line btn-sm" onClick={()=>toggleVis(p.id,p.visible)}>{p.visible?'Hide':'Show'}</button>
+                        <button className="btn btn-line btn-sm" onClick={()=>setEditing({...p})}>Edit</button>
+                        <button className="btn btn-bad btn-sm" onClick={()=>del(p.id)}>Del</button>
                       </div>
                     </td>
                   </tr>
@@ -829,33 +867,33 @@ function Promos() {
   return (
     <div>
       {modal&&(
-        <Modal title="Add Promo / Sale Price" onClose={()=>setModal(false)} footer={<><button className="btn-primary" onClick={save} disabled={saving||!form.product_id||!form.price||!form.end_date}>{saving?'Saving…':'Save Promo'}</button><button className="btn-secondary" onClick={()=>setModal(false)}>Cancel</button></>}>
+        <Modal title="Add Promo / Sale Price" onClose={()=>setModal(false)} footer={<><button className="btn btn-brass" onClick={save} disabled={saving||!form.product_id||!form.price||!form.end_date}>{saving?'Saving…':'Save Promo'}</button><button className="btn btn-line" onClick={()=>setModal(false)}>Cancel</button></>}>
           <Select label="Product" value={form.product_id} onChange={v=>setForm({...form,product_id:v})} options={products.map(p=>({value:p.id,label:p.name}))} required/>
           <NumField label="Promo Price (GH₵)" value={form.price} onChange={v=>setForm({...form,price:v})} required/>
           <Field label="Label" value={form.label} onChange={v=>setForm({...form,label:v})} placeholder="e.g. Flash Sale, Bundle Deal"/>
           <div className="field"><label>End Date & Time</label><input type="datetime-local" className="field-input" value={form.end_date} onChange={e=>setForm({...form,end_date:e.target.value})}/></div>
         </Modal>
       )}
-      <div className="page-header">
-        <div><div className="page-title">Promos & Bundles</div><div className="page-sub">{active.length} active · {expired.length} expired</div></div>
-        <button className="btn-primary" onClick={()=>setModal(true)}>+ Add Promo</button>
+      <div className="page-head">
+        <div><div className="page-h1">Promos & Bundles</div><div className="page-desc">{active.length} active · {expired.length} expired</div></div>
+        <button className="btn btn-brass" onClick={()=>setModal(true)}>{I.plus} Add Promo</button>
       </div>
       {loading?<Spinner/>:<>
-        {active.length>0&&<><div style={{fontSize:11,fontWeight:700,color:'#10b981',marginBottom:8,textTransform:'uppercase',letterSpacing:'.06em'}}>Active Promos</div>
+        {active.length>0&&<><div style={{fontSize:11,fontWeight:700,color:'var(--good)',marginBottom:8,textTransform:'uppercase',letterSpacing:'.06em'}}>Active Promos</div>
         <div className="panel" style={{marginBottom:16,overflow:'hidden'}}>
           {active.map(p=>(
             <div key={p.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
-              <div><div style={{fontSize:14,fontWeight:700}}>{p.products?.name||'Product'}</div><div style={{fontSize:12,color:'#888'}}>{p.label||'Sale'} · Price: {ghs(p.price)} · Ends {fmtDate(p.end_date)}</div></div>
-              <div style={{display:'flex',alignItems:'center',gap:8}}><Badge status="Active"/><button className="btn-danger btn-sm" onClick={()=>del(p.id)}>Remove</button></div>
+              <div><div style={{fontSize:14,fontWeight:700}}>{p.products?.name||'Product'}</div><div style={{fontSize:12,color:'var(--ink-2)'}}>{p.label||'Sale'} · Price: {ghs(p.price)} · Ends {fmtDate(p.end_date)}</div></div>
+              <div style={{display:'flex',alignItems:'center',gap:8}}><Badge status="Active"/><button className="btn btn-bad btn-sm" onClick={()=>del(p.id)}>Remove</button></div>
             </div>
           ))}
         </div></>}
-        {expired.length>0&&<><div style={{fontSize:11,fontWeight:700,color:'#aaa',margin:'16px 0 8px',textTransform:'uppercase',letterSpacing:'.06em'}}>Expired</div>
+        {expired.length>0&&<><div style={{fontSize:11,fontWeight:700,color:'var(--ink-3)',margin:'16px 0 8px',textTransform:'uppercase',letterSpacing:'.06em'}}>Expired</div>
         <div className="panel" style={{overflow:'hidden',opacity:.65}}>
           {expired.slice(0,5).map(p=>(
             <div key={p.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
-              <div><div style={{fontSize:13,fontWeight:500}}>{p.products?.name||'Product'}</div><div style={{fontSize:11,color:'#aaa'}}>Was {ghs(p.price)} · Ended {fmtDate(p.end_date)}</div></div>
-              <button className="btn-secondary btn-sm" onClick={()=>del(p.id)}>Remove</button>
+              <div><div style={{fontSize:13,fontWeight:500}}>{p.products?.name||'Product'}</div><div style={{fontSize:11,color:'var(--ink-3)'}}>Was {ghs(p.price)} · Ended {fmtDate(p.end_date)}</div></div>
+              <button className="btn btn-line btn-sm" onClick={()=>del(p.id)}>Remove</button>
             </div>
           ))}
         </div></>}
@@ -887,7 +925,7 @@ function Restock() {
   return (
     <div>
       {modal&&(
-        <Modal title="Record Restock" onClose={()=>setModal(false)} footer={<><button className="btn-primary" onClick={save} disabled={saving||!form.product_id||!form.qty}>{saving?'Saving…':'Record Restock'}</button><button className="btn-secondary" onClick={()=>setModal(false)}>Cancel</button></>}>
+        <Modal title="Record Restock" onClose={()=>setModal(false)} footer={<><button className="btn btn-brass" onClick={save} disabled={saving||!form.product_id||!form.qty}>{saving?'Saving…':'Record Restock'}</button><button className="btn btn-line" onClick={()=>setModal(false)}>Cancel</button></>}>
           <Select label="Product" value={form.product_id} onChange={v=>setForm({...form,product_id:v})} options={products.map(p=>({value:p.id,label:`${p.name} (stock: ${p.quantity||0})`}))} required/>
           <NumField label="Quantity Received" value={form.qty} onChange={v=>setForm({...form,qty:v})} step="1" required/>
           <NumField label="Cost per Unit (GH₵)" value={form.cost_per_unit} onChange={v=>setForm({...form,cost_per_unit:v})}/>
@@ -895,9 +933,9 @@ function Restock() {
           <TextArea label="Notes" value={form.notes} onChange={v=>setForm({...form,notes:v})} placeholder="Notes about this delivery" rows={2}/>
         </Modal>
       )}
-      <div className="page-header">
-        <div><div className="page-title">Restock</div><div className="page-sub">Record incoming stock deliveries</div></div>
-        <button className="btn-primary" onClick={()=>setModal(true)}>+ Record Restock</button>
+      <div className="page-head">
+        <div><div className="page-h1">Restock</div><div className="page-desc">Record incoming stock deliveries</div></div>
+        <button className="btn btn-brass" onClick={()=>setModal(true)}>{I.plus} Record Restock</button>
       </div>
       {loading?<Spinner/>:entries.length===0?<Empty text="No restock records."/>:(
         <div className="panel" style={{overflow:'hidden'}}>
@@ -905,12 +943,12 @@ function Restock() {
             <div key={e.id} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'14px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
               <div>
                 <div style={{fontSize:14,fontWeight:700}}>{e.products?.name||'Product'}</div>
-                <div style={{fontSize:13,color:'#10b981',fontWeight:700}}>+{e.qty_change} units <span style={{color:'#aaa',fontWeight:400,fontSize:11}}>({e.qty_before} → {e.qty_after})</span></div>
-                {e.supplier&&<div style={{fontSize:11,color:'#888'}}>From: {e.supplier}</div>}
-                {e.cost_per_unit&&<div style={{fontSize:11,color:'#888'}}>Cost: {ghs(e.cost_per_unit)} ea. · Total: {ghs(e.cost_per_unit*e.qty_change)}</div>}
-                {e.notes&&<div style={{fontSize:11,color:'#aaa'}}>{e.notes}</div>}
+                <div style={{fontSize:13,color:'var(--good)',fontWeight:700}}>+{e.qty_change} units <span style={{color:'var(--ink-3)',fontWeight:400,fontSize:11}}>({e.qty_before} → {e.qty_after})</span></div>
+                {e.supplier&&<div style={{fontSize:11,color:'var(--ink-2)'}}>From: {e.supplier}</div>}
+                {e.cost_per_unit&&<div style={{fontSize:11,color:'var(--ink-2)'}}>Cost: {ghs(e.cost_per_unit)} ea. · Total: {ghs(e.cost_per_unit*e.qty_change)}</div>}
+                {e.notes&&<div style={{fontSize:11,color:'var(--ink-3)'}}>{e.notes}</div>}
               </div>
-              <div style={{fontSize:11,color:'#aaa',textAlign:'right',flexShrink:0}}>{fmtDate(e.created_at)}</div>
+              <div style={{fontSize:11,color:'var(--ink-3)',textAlign:'right',flexShrink:0}}>{fmtDate(e.created_at)}</div>
             </div>
           ))}
         </div>
@@ -934,14 +972,14 @@ function StockAdjustInline({product,onDone}) {
   }
   return (
     <div>
-      <p style={{fontSize:13,color:'#888',marginBottom:12,fontWeight:500}}>{product.name}</p>
-      <div style={{display:'flex',justifyContent:'space-between',padding:'12px 16px',background:'#f4f6fb',borderRadius:12,marginBottom:14}}>
-        <span style={{fontSize:12,color:'#888',fontWeight:600}}>Current stock</span>
-        <span style={{fontSize:18,fontWeight:800,color:(product.quantity||0)<=3?'#ef4444':(product.quantity||0)<=10?'#f59e0b':'#10b981'}}>{product.quantity||0} units</span>
+      <p style={{fontSize:13,color:'var(--ink-2)',marginBottom:12,fontWeight:500}}>{product.name}</p>
+      <div style={{display:'flex',justifyContent:'space-between',padding:'12px 16px',background:'var(--panel-2)',borderRadius:12,marginBottom:14}}>
+        <span style={{fontSize:12,color:'var(--ink-2)',fontWeight:600}}>Current stock</span>
+        <span style={{fontSize:18,fontWeight:800,color:(product.quantity||0)<=3?'var(--bad)':(product.quantity||0)<=10?'var(--warn)':'var(--good)'}}>{product.quantity||0} units</span>
       </div>
-      <div style={{display:'flex',gap:4,marginBottom:14,background:'#f4f6fb',padding:4,borderRadius:10}}>
+      <div style={{display:'flex',gap:4,marginBottom:14,background:'var(--panel-2)',padding:4,borderRadius:10}}>
         {[['set','Set to'],['add','Add'],['remove','Remove']].map(([v,l])=>(
-          <button key={v} onClick={()=>setMode(v)} style={{flex:1,padding:'8px 0',background:mode===v?'#fff':'transparent',border:'none',cursor:'pointer',fontSize:12,fontWeight:mode===v?700:400,color:mode===v?'#0d1b3e':'#888',transition:'all .15s',borderRadius:8,fontFamily:'var(--sans)'}}>
+          <button key={v} onClick={()=>setMode(v)} style={{flex:1,padding:'8px 0',background:mode===v?'#fff':'transparent',border:'none',cursor:'pointer',fontSize:12,fontWeight:mode===v?700:400,color:mode===v?'var(--ink)':'#888',transition:'all .15s',borderRadius:8,fontFamily:'var(--sans)'}}>
             {l}
           </button>
         ))}
@@ -950,9 +988,9 @@ function StockAdjustInline({product,onDone}) {
         <label>{mode==='set'?'New quantity':mode==='add'?'Units to add':'Units to remove'}</label>
         <input type="number" min="0" className="field-input" value={qty} onChange={e=>setQty(e.target.value)} autoFocus style={{fontSize:24,fontWeight:800,textAlign:'center',height:56}}/>
       </div>
-      {qty!==''&&<div style={{fontSize:13,color:'#10b981',fontWeight:700,background:'#dcfce7',padding:'10px 14px',borderRadius:10,marginBottom:12}}>New stock will be <strong>{preview()}</strong> units</div>}
+      {qty!==''&&<div style={{fontSize:13,color:'var(--good)',fontWeight:700,background:'#dcfce7',padding:'10px 14px',borderRadius:10,marginBottom:12}}>New stock will be <strong>{preview()}</strong> units</div>}
       <div className="field"><label>Reason (optional)</label><input className="field-input" value={note} onChange={e=>setNote(e.target.value)} placeholder="e.g. Manual correction, damaged items"/></div>
-      <button className="btn-primary" style={{width:'100%',justifyContent:'center',padding:'13px 0',fontSize:14,borderRadius:12}} disabled={!qty||saving} onClick={apply}>{saving?'Saving…':'Update Stock'}</button>
+      <button className="btn btn-brass" style={{width:'100%',justifyContent:'center',padding:'13px 0',fontSize:14,borderRadius:12}} disabled={!qty||saving} onClick={apply}>{saving?'Saving…':'Update Stock'}</button>
     </div>
   )
 }
@@ -969,30 +1007,30 @@ function StockAdjust() {
   return (
     <div>
       {selected&&<Modal title="Adjust Stock" onClose={()=>{setSelected(null);load()}}><StockAdjustInline product={selected} onDone={q=>{setSelected(null);setProducts(ps=>ps.map(p=>p.id===selected.id?{...p,quantity:q}:p));load()}}/></Modal>}
-      <div className="page-header">
-        <div><div className="page-title">Stock & Adjust</div><div className="page-sub">View and correct stock levels</div></div>
+      <div className="page-head">
+        <div><div className="page-h1">Stock & Adjust</div><div className="page-desc">View and correct stock levels</div></div>
       </div>
-      <div className="search-box" style={{maxWidth:360,marginBottom:14}}><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…"/></div>
+      <div className="search" style={{maxWidth:360,marginBottom:14}}>{I.search}<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products…"/></div>
       {loading?<Spinner/>:(
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:12,marginBottom:24}}>
           {shown.map(p=>{
-            const q=p.quantity||0,clr=q===0?'#ef4444':q<=3?'#ef4444':q<=10?'#f59e0b':'#10b981'
+            const q=p.quantity||0,clr=q===0?'var(--bad)':q<=3?'var(--bad)':q<=10?'var(--warn)':'var(--good)'
             return (
               <div key={p.id} className="panel" style={{padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer'}} onClick={()=>setSelected(p)}>
-                <div><div style={{fontSize:13,fontWeight:700}}>{p.name}</div><div style={{fontSize:11,color:'#aaa'}}>{p.category}</div></div>
-                <div style={{textAlign:'right'}}><div style={{fontSize:24,fontWeight:900,color:clr}}>{q}</div><button className="btn-primary btn-sm" style={{marginTop:4}}>Adjust</button></div>
+                <div><div style={{fontSize:13,fontWeight:700}}>{p.name}</div><div style={{fontSize:11,color:'var(--ink-3)'}}>{p.category}</div></div>
+                <div style={{textAlign:'right'}}><div style={{fontSize:24,fontWeight:900,color:clr}}>{q}</div><button className="btn btn-brass btn-sm" style={{marginTop:4}}>Adjust</button></div>
               </div>
             )
           })}
         </div>
       )}
       {history.length>0&&<>
-        <div style={{fontSize:12,fontWeight:700,marginBottom:10,color:'#555',textTransform:'uppercase',letterSpacing:'.05em'}}>Recent Adjustments</div>
+        <div style={{fontSize:12,fontWeight:700,marginBottom:10,color:'var(--ink-2)',textTransform:'uppercase',letterSpacing:'.05em'}}>Recent Adjustments</div>
         <div className="panel" style={{overflow:'hidden'}}>
           {history.map(h=>(
             <div key={h.id} style={{display:'flex',justifyContent:'space-between',padding:'11px 20px',borderBottom:'1px solid rgba(0,0,0,.04)',fontSize:13}}>
-              <div><span style={{fontWeight:700}}>{h.products?.name}</span> <span style={{color:h.qty_change>0?'#10b981':'#ef4444',fontWeight:700}}>{h.qty_change>0?'+':''}{h.qty_change}</span> <span style={{color:'#aaa',fontSize:11}}>({h.qty_before}→{h.qty_after}) [{h.type}]</span>{h.notes&&<span style={{color:'#bbb',fontSize:11}}> · {h.notes}</span>}</div>
-              <span style={{color:'#aaa',fontSize:11,flexShrink:0}}>{fmtDate(h.created_at)}</span>
+              <div><span style={{fontWeight:700}}>{h.products?.name}</span> <span style={{color:h.qty_change>0?'var(--good)':'var(--bad)',fontWeight:700}}>{h.qty_change>0?'+':''}{h.qty_change}</span> <span style={{color:'var(--ink-3)',fontSize:11}}>({h.qty_before}→{h.qty_after}) [{h.type}]</span>{h.notes&&<span style={{color:'var(--ink-3)',fontSize:11}}> · {h.notes}</span>}</div>
+              <span style={{color:'var(--ink-3)',fontSize:11,flexShrink:0}}>{fmtDate(h.created_at)}</span>
             </div>
           ))}
         </div>
@@ -1011,27 +1049,27 @@ function Customers() {
   const shown=customers.filter(c=>!search||c.name?.toLowerCase().includes(search.toLowerCase())||c.phone?.includes(search))
   return (
     <div>
-      {detail&&<Modal title="Customer" onClose={()=>setDetail(null)} footer={<button className="btn-secondary" onClick={()=>setDetail(null)}>Close</button>}>
+      {detail&&<Modal title="Customer" onClose={()=>setDetail(null)} footer={<button className="btn btn-line" onClick={()=>setDetail(null)}>Close</button>}>
         {[['Name',detail.name||'—'],['Phone',detail.phone],['Total Spent',ghs(detail.total_spent||0)],['Purchases',detail.purchase_count||0],['Last Purchase',fmtDate(detail.last_purchase)],['Joined',fmtDate(detail.created_at)]].map(([k,v])=>(
-          <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid #f5f5f5',fontSize:13}}><span style={{color:'#777'}}>{k}</span><span style={{fontWeight:700}}>{v}</span></div>
+          <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid var(--line-soft)',fontSize:13}}><span style={{color:'var(--ink-2)'}}>{k}</span><span style={{fontWeight:700}}>{v}</span></div>
         ))}
       </Modal>}
-      <div className="page-header">
-        <div><div className="page-title">Customers</div><div className="page-sub">{customers.length} registered</div></div>
+      <div className="page-head">
+        <div><div className="page-h1">Customers</div><div className="page-desc">{customers.length} registered</div></div>
       </div>
-      <div className="search-box" style={{maxWidth:360,marginBottom:14}}><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name or phone…"/></div>
+      <div className="search" style={{maxWidth:360,marginBottom:14}}>{I.search}<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name or phone…"/></div>
       {loading?<Spinner/>:shown.length===0?<Empty text="No customers."/>:(
         <div className="panel" style={{overflow:'hidden'}}>
-          <table className="data-table">
+          <table className="tbl">
             <thead><tr><th>Name</th><th>Phone</th><th>Purchases</th><th>Total Spent</th><th>Last Purchase</th><th></th></tr></thead>
             <tbody>{shown.map(c=>(
               <tr key={c.id}>
-                <td><span style={{fontWeight:700}}>{c.name||<span style={{color:'#ccc'}}>—</span>}</span></td>
+                <td><span style={{fontWeight:700}}>{c.name||<span style={{color:'var(--ink-3)'}}>—</span>}</span></td>
                 <td style={{fontFamily:'monospace',fontSize:12}}>{c.phone}</td>
                 <td><span style={{fontWeight:700}}>{c.purchase_count||0}</span></td>
-                <td><span style={{fontWeight:800,color:'#0d1b3e'}}>{ghs(c.total_spent||0)}</span></td>
-                <td style={{color:'#aaa',fontSize:11}}>{fmtDate(c.last_purchase)}</td>
-                <td><button className="btn-secondary btn-sm" onClick={()=>setDetail(c)}>View</button></td>
+                <td><span style={{fontWeight:800,color:'var(--ink)'}}>{ghs(c.total_spent||0)}</span></td>
+                <td style={{color:'var(--ink-3)',fontSize:11}}>{fmtDate(c.last_purchase)}</td>
+                <td><button className="btn btn-line btn-sm" onClick={()=>setDetail(c)}>View</button></td>
               </tr>
             ))}</tbody>
           </table>
@@ -1060,29 +1098,29 @@ function Expenses() {
   const monthTotal=expenses.filter(e=>e.date?.startsWith(today().slice(0,7))).reduce((a,e)=>a+Number(e.amount||0),0)
   return (
     <div>
-      {editing&&<Modal title={editing.id?'Edit Expense':'New Expense'} onClose={()=>setEditing(null)} footer={<><button className="btn-primary" onClick={save} disabled={saving}>{saving?'Saving…':'Save'}</button><button className="btn-secondary" onClick={()=>setEditing(null)}>Cancel</button></>}>
+      {editing&&<Modal title={editing.id?'Edit Expense':'New Expense'} onClose={()=>setEditing(null)} footer={<><button className="btn btn-brass" onClick={save} disabled={saving}>{saving?'Saving…':'Save'}</button><button className="btn btn-line" onClick={()=>setEditing(null)}>Cancel</button></>}>
         <Field label="Description" value={editing.description} onChange={v=>setEditing({...editing,description:v})} placeholder="e.g. Monthly rent" required/>
         <NumField label="Amount (GH₵)" value={editing.amount} onChange={v=>setEditing({...editing,amount:v})} required/>
         <Field label="Category" value={editing.category} onChange={v=>setEditing({...editing,category:v})} placeholder="e.g. Rent, Logistics"/>
         <Field label="Notes" value={editing.notes} onChange={v=>setEditing({...editing,notes:v})} placeholder="Additional notes"/>
         <div className="field"><label>Date</label><input type="date" className="field-input" value={editing.date?.slice(0,10)||today()} onChange={e=>setEditing({...editing,date:e.target.value})}/></div>
       </Modal>}
-      <div className="page-header">
-        <div><div className="page-title">Expenses</div><div className="page-sub">This month: <strong style={{color:'#ef4444'}}>{ghs(monthTotal)}</strong> · All time: {ghs(total)}</div></div>
-        <button className="btn-primary" onClick={()=>setEditing({description:'',amount:'',category:'',notes:'',date:today()})}>+ Add Expense</button>
+      <div className="page-head">
+        <div><div className="page-h1">Expenses</div><div className="page-desc">This month: <strong style={{color:'var(--bad)'}}>{ghs(monthTotal)}</strong> · All time: {ghs(total)}</div></div>
+        <button className="btn btn-brass" onClick={()=>setEditing({description:'',amount:'',category:'',notes:'',date:today()})}>{I.plus} Add Expense</button>
       </div>
-      <div className="filter-tabs" style={{marginBottom:14}}>
-        {cats.map(c=><button key={c} className={`filter-tab${catFilter===c?' active':''}`} onClick={()=>setCatFilter(c)}>{c==='all'?'All Categories':c}</button>)}
+      <div className="tabs" style={{marginBottom:14}}>
+        {cats.map(c=><button key={c} className={`tab${catFilter===c?' active':''}`} onClick={()=>setCatFilter(c)}>{c==='all'?'All Categories':c}</button>)}
       </div>
       {loading?<Spinner/>:shown.length===0?<Empty text="No expenses."/>:(
         <div className="panel" style={{overflow:'hidden'}}>
           {shown.map(e=>(
             <div key={e.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 20px',borderBottom:'1px solid rgba(0,0,0,.04)'}}>
-              <div><div style={{fontSize:14,fontWeight:700}}>{e.description}</div><div style={{fontSize:11,color:'#aaa'}}>{e.category&&`${e.category} · `}{fmtDate(e.date)}{e.notes&&` · ${e.notes}`}</div></div>
+              <div><div style={{fontSize:14,fontWeight:700}}>{e.description}</div><div style={{fontSize:11,color:'var(--ink-3)'}}>{e.category&&`${e.category} · `}{fmtDate(e.date)}{e.notes&&` · ${e.notes}`}</div></div>
               <div style={{display:'flex',alignItems:'center',gap:10}}>
-                <span style={{fontSize:17,fontWeight:800,color:'#ef4444'}}>{ghs(e.amount)}</span>
-                <button className="btn-secondary btn-sm" onClick={()=>setEditing({...e})}>Edit</button>
-                <button className="btn-danger btn-sm" onClick={()=>del(e.id)}>Del</button>
+                <span style={{fontSize:17,fontWeight:800,color:'var(--bad)'}}>{ghs(e.amount)}</span>
+                <button className="btn btn-line btn-sm" onClick={()=>setEditing({...e})}>Edit</button>
+                <button className="btn btn-bad btn-sm" onClick={()=>del(e.id)}>Del</button>
               </div>
             </div>
           ))}
@@ -1116,45 +1154,45 @@ function Reports() {
   }
   return (
     <div>
-      <div className="page-header">
-        <div><div className="page-title">Reports</div><div className="page-sub">Business performance overview</div></div>
-        <div className="filter-tabs">
+      <div className="page-head">
+        <div><div className="page-h1">Reports</div><div className="page-desc">Business performance overview</div></div>
+        <div className="tabs">
           {[['today','Today'],['week','Week'],['month','Month'],['year','Year']].map(([v,l])=>(
-            <button key={v} className={`filter-tab${period===v?' active':''}`} onClick={()=>setPeriod(v)}>{l}</button>
+            <button key={v} className={`tab${period===v?' active':''}`} onClick={()=>setPeriod(v)}>{l}</button>
           ))}
         </div>
       </div>
       {loading?<Spinner/>:!data?null:<>
-        <div className="stat-grid">
-          <StatCard label="POS Revenue" value={ghs(data.revenue)} sub={`${data.sales} sales`}/>
-          <StatCard label="Online Revenue" value={ghs(data.onlineRev)} sub={`${data.orders} orders`} variant="blue"/>
-          <StatCard label="Gross Profit" value={ghs(data.profit)} sub="Before expenses" variant="green"/>
-          <StatCard label="Expenses" value={ghs(data.expenses)} sub="Recorded" variant="red"/>
-          <StatCard label="Net Profit" value={ghs(data.net)} sub="After expenses" variant={data.net>=0?'green':'red'}/>
-        </div>
+        <MetricStrip cols={5}>
+          <Metric label="POS Revenue" value={ghs(data.revenue)} sub={<><b>{data.sales}</b> sales</>} icon={I.coins}/>
+          <Metric label="Online Revenue" value={ghs(data.onlineRev)} sub={<><b>{data.orders}</b> orders</>} icon={I.invoice}/>
+          <Metric label="Gross Profit" value={ghs(data.profit)} sub="Before expenses" icon={I.trend}/>
+          <Metric label="Expenses" value={ghs(data.expenses)} sub="Recorded" icon={I.expense}/>
+          <Metric label="Net Profit" value={ghs(data.net)} sub="After expenses" icon={I.star}/>
+        </MetricStrip>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:16}}>
           <div className="panel">
-            <div className="panel-header"><span className="panel-title">Revenue by Payment Method</span></div>
+            <div className="panel-head"><span className="panel-title">Revenue by Payment Method</span></div>
             <div className="panel-body">
               {Object.entries(data.byPay).sort((a,b)=>b[1]-a[1]).map(([k,v])=>(
-                <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid #f5f5f5'}}>
-                  <span style={{fontSize:13,color:'#555',fontWeight:600}}>{k}</span>
-                  <span style={{fontSize:14,fontWeight:800,color:'#0d1b3e'}}>{ghs(v)}</span>
+                <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid var(--line-soft)'}}>
+                  <span style={{fontSize:13,color:'var(--ink-2)',fontWeight:600}}>{k}</span>
+                  <span style={{fontSize:14,fontWeight:800,color:'var(--ink)'}}>{ghs(v)}</span>
                 </div>
               ))}
-              {Object.keys(data.byPay).length===0&&<p style={{color:'#aaa',fontSize:13}}>No sales in this period.</p>}
+              {Object.keys(data.byPay).length===0&&<p style={{color:'var(--ink-3)',fontSize:13}}>No sales in this period.</p>}
             </div>
           </div>
           <div className="panel">
-            <div className="panel-header"><span className="panel-title">Expenses by Category</span></div>
+            <div className="panel-head"><span className="panel-title">Expenses by Category</span></div>
             <div className="panel-body">
               {Object.entries(data.byCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>(
-                <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid #f5f5f5'}}>
-                  <span style={{fontSize:13,color:'#555',fontWeight:600}}>{k}</span>
-                  <span style={{fontSize:14,fontWeight:800,color:'#ef4444'}}>{ghs(v)}</span>
+                <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid var(--line-soft)'}}>
+                  <span style={{fontSize:13,color:'var(--ink-2)',fontWeight:600}}>{k}</span>
+                  <span style={{fontSize:14,fontWeight:800,color:'var(--bad)'}}>{ghs(v)}</span>
                 </div>
               ))}
-              {Object.keys(data.byCat).length===0&&<p style={{color:'#aaa',fontSize:13}}>No expenses in this period.</p>}
+              {Object.keys(data.byCat).length===0&&<p style={{color:'var(--ink-3)',fontSize:13}}>No expenses in this period.</p>}
             </div>
           </div>
         </div>
@@ -1178,30 +1216,30 @@ function Staff() {
   }
   return (
     <div>
-      {modal&&<Modal title={form.id?'Edit Staff':'Add Staff Member'} onClose={()=>setModal(false)} footer={<><button className="btn-primary" onClick={save} disabled={saving||!form.name.trim()}>{saving?'Saving…':'Save'}</button><button className="btn-secondary" onClick={()=>setModal(false)}>Cancel</button></>}>
+      {modal&&<Modal title={form.id?'Edit Staff':'Add Staff Member'} onClose={()=>setModal(false)} footer={<><button className="btn btn-brass" onClick={save} disabled={saving||!form.name.trim()}>{saving?'Saving…':'Save'}</button><button className="btn btn-line" onClick={()=>setModal(false)}>Cancel</button></>}>
         <Field label="Full Name" value={form.name} onChange={v=>setForm({...form,name:v})} placeholder="e.g. Ama Mensah" required/>
         <Select label="Role" value={form.role} onChange={v=>setForm({...form,role:v})} options={['Manager','Cashier','Sales Rep','Delivery','Other']}/>
         <Field label="Phone" value={form.phone} onChange={v=>setForm({...form,phone:v})} placeholder="0XX XXX XXXX"/>
         <Field label="POS PIN" value={form.pin} onChange={v=>setForm({...form,pin:v})} placeholder="4-digit PIN" type="password"/>
         <Toggle on={form.active} onToggle={()=>setForm({...form,active:!form.active})} label="Active" sub="Staff member can access the system"/>
       </Modal>}
-      <div className="page-header">
-        <div><div className="page-title">Staff</div><div className="page-sub">{staff.filter(s=>s.active).length} active members</div></div>
-        <button className="btn-primary" onClick={()=>{setForm({name:'',role:'',phone:'',pin:'',active:true});setModal(true)}}>+ Add Staff</button>
+      <div className="page-head">
+        <div><div className="page-h1">Staff</div><div className="page-desc">{staff.filter(s=>s.active).length} active members</div></div>
+        <button className="btn btn-brass" onClick={()=>{setForm({name:'',role:'',phone:'',pin:'',active:true});setModal(true)}}>{I.plus} Add Staff</button>
       </div>
       {loading?<Spinner/>:staff.length===0?<Empty text="No staff members."/>:(
         <div className="panel" style={{overflow:'hidden'}}>
-          <table className="data-table">
+          <table className="tbl">
             <thead><tr><th>Name</th><th>Role</th><th>Phone</th><th>Status</th><th style={{textAlign:'right'}}>Actions</th></tr></thead>
             <tbody>{staff.map(m=>(
               <tr key={m.id}>
                 <td><span style={{fontWeight:700}}>{m.name}</span></td>
-                <td style={{color:'#888',fontSize:12}}>{m.role||'—'}</td>
+                <td style={{color:'var(--ink-2)',fontSize:12}}>{m.role||'—'}</td>
                 <td style={{fontSize:12}}>{m.phone||'—'}</td>
                 <td><Badge status={m.active?'Active':'Inactive'}/></td>
                 <td><div style={{display:'flex',gap:4,justifyContent:'flex-end'}}>
-                  <button className="btn-secondary btn-sm" onClick={()=>{setForm({...m});setModal(true)}}>Edit</button>
-                  <button className="btn-secondary btn-sm" onClick={async()=>{ await supabase.from('staff').update({active:!m.active}).eq('id',m.id); load() }}>{m.active?'Deactivate':'Activate'}</button>
+                  <button className="btn btn-line btn-sm" onClick={()=>{setForm({...m});setModal(true)}}>Edit</button>
+                  <button className="btn btn-line btn-sm" onClick={async()=>{ await supabase.from('staff').update({active:!m.active}).eq('id',m.id); load() }}>{m.active?'Deactivate':'Activate'}</button>
                 </div></td>
               </tr>
             ))}</tbody>
