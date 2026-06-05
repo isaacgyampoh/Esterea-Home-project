@@ -28,12 +28,13 @@ export default function Receipts() {
       <div className="mb18"><SearchBar value={search} onChange={setSearch} placeholder="Search receipt or customer…" /></div>
       <Panel>
         {loading ? <Spinner /> : (
-          <Table columns={[{ label: 'Receipt' }, { label: 'Customer' }, { label: 'Date' }, { label: 'Payment' }, { label: 'Total' }, { label: '', align: 'right' }]} rows={list}
+          <Table columns={[{ label: 'Receipt' }, { label: 'Customer' }, { label: 'Staff' }, { label: 'Date' }, { label: 'Payment' }, { label: 'Total' }, { label: '', align: 'right' }]} rows={list}
             empty={<Empty icon="receipt" title="No sales yet" sub="Complete a sale in POS to see receipts here." />}
             renderRow={s => (
               <tr key={s.id} style={s.voided ? { opacity: .5 } : undefined}>
                 <td className="cell-mono">{s.receipt_no}{s.voided && ' (void)'}</td>
                 <td style={{ fontWeight: 600 }}>{s.customer_name || 'Walk-in'}</td>
+                <td className="cell-dim">{s.staff_name || '—'}</td>
                 <td className="cell-dim">{fmtDateTime(s.date)}</td>
                 <td className="cell-dim">{s.payment}</td>
                 <td className="cell-num">{ghs(s.total)}</td>

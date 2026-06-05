@@ -8,7 +8,7 @@ import Modal from '../ui/Modal'
 
 const BLANK = { order_ref: '', amount: 0, method: 'Cash', reason: '', date: today() }
 
-export default function Refunds() {
+export default function Refunds({ session }) {
   const { data, loading, reload } = useAsync(async () => {
     const { data } = await supabase.from('refunds').select('*').order('date', { ascending: false })
     return data || []
@@ -20,7 +20,7 @@ export default function Refunds() {
 
   async function save() {
     setSaving(true)
-    const res = await supabase.from('refunds').insert(form)
+    const res = await supabase.from('refunds').insert({ ...form, staff_id: session?.id || null, staff_name: session?.name || 'Admin' })
     setSaving(false)
     if (res.error) return toast(res.error.message, 'bad')
     toast('Refund issued', 'good'); setModal(false); setForm(BLANK); reload()

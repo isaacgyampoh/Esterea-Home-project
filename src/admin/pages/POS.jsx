@@ -7,7 +7,7 @@ import { SearchBar, Spinner, Empty, Button } from '../ui'
 import { PageHeader } from '../ui/Layout'
 import Icon from '../ui/Icon'
 
-export default function POS() {
+export default function POS({ session }) {
   const { data: products, loading, reload } = useAsync(async () => {
     const { data } = await supabase.from('products').select('*').gt('quantity', 0).order('name')
     return data || []
@@ -47,6 +47,7 @@ export default function POS() {
       items: cart.map(x => ({ id: x.id, name: x.name, price: x.price, qty: x.qty })),
       subtotal, discount, total, profit,
       payment, customer_name: customer.trim() || null, customer_phone: phone.trim() || null,
+      staff_id: session?.id || null, staff_name: session?.name || 'Admin',
       voided: false,
     }
     const { error } = await supabase.from('sales').insert(sale)
