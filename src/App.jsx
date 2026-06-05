@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import Admin from './Admin.jsx'
+import Admin from './admin/Admin.jsx'
 
 const SUPABASE_URL  = 'https://tgdtjfquwbtvfsdnvvgm.supabase.co'
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnZHRqZnF1d2J0dmZzZG52dmdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NTM4MjUsImV4cCI6MjA5NjAyOTgyNX0.uXUkodx29_LQNU8pkpbxNnYGFgBYmoFTJHtxVWWAt8E'
