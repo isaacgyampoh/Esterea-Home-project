@@ -278,13 +278,13 @@ function Store() {
           <div style={{ position:'relative', zIndex:1, height:'100%', display:'flex', flexDirection:'column', justifyContent:'center', ...S.page }}>
             <div style={{ maxWidth:560 }}>
               <div style={{ display:'inline-flex', alignItems:'center', gap:6, color:'#5fd397', fontSize:11, letterSpacing:'.14em', textTransform:'uppercase', fontWeight:600, marginBottom:18 }}>
-                {Ico.pin} Aviation Road, Accra
+                {Ico.pin} Accra, Ghana
               </div>
               <h1 className="anim-up" style={{ fontSize:'clamp(34px,5.5vw,58px)', fontWeight:800, color:'#fff', lineHeight:1.08, marginBottom:18, letterSpacing:'-.03em' }}>
-                Home essentials,<br/>delivered to you.
+                Beautiful décor<br/>for every space.
               </h1>
               <p style={{ fontSize:15, color:'rgba(255,255,255,.78)', lineHeight:1.6, marginBottom:28, maxWidth:440 }}>
-                Quality cookware, curtains, bedding and more. Nationwide delivery across Ghana.
+                Curated home décor that turns your house into a statement. Delivered anywhere in Ghana.
               </p>
               <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
                 <button onClick={()=>go('shop','/shop')} className="btn" style={{ padding:'13px 28px', borderRadius:30, fontSize:13, background:'#fff', color:'#111' }}>
@@ -360,7 +360,7 @@ function Store() {
         {/* Strip */}
         <div style={{ background:'#111', padding:'48px 20px' }}>
           <div style={{ ...S.page, display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:32 }}>
-            {[['Curated Quality','Every piece is handpicked for Ghanaian homes.'],['Nationwide Delivery','We deliver across Ghana — fast and reliable.'],['WhatsApp Support','Questions? Message us anytime.']].map(([t,d])=>(
+            {[['Handpicked Décor','Every piece chosen to elevate your space.'],['Nationwide Delivery','We deliver across Ghana — fast and reliable.'],['WhatsApp Support','Questions? Message us anytime.']].map(([t,d])=>(
               <div key={t}>
                 <div style={{ fontSize:15, fontWeight:700, color:'#fff', marginBottom:6, letterSpacing:'-.01em' }}>{t}</div>
                 <div style={{ fontSize:12, color:'rgba(255,255,255,.45)', lineHeight:1.6 }}>{d}</div>
@@ -563,7 +563,7 @@ function Store() {
         <div style={{ ...S.page, display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:32, padding:'40px 20px 28px' }}>
           <div>
             <div style={{ fontSize:17, fontWeight:800, color:'#fff', marginBottom:10, letterSpacing:'-.01em' }}>Esterea Home</div>
-            <p style={{ fontSize:11, lineHeight:1.7 }}>Premium home decor & furnishings for Ghanaian homes.</p>
+            <p style={{ fontSize:11, lineHeight:1.7 }}>Curated home décor that makes every space beautiful.</p>
           </div>
           <div>
             <div style={{ fontSize:10, letterSpacing:'.1em', textTransform:'uppercase', marginBottom:12, color:'rgba(255,255,255,.25)' }}>Links</div>
