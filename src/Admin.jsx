@@ -120,42 +120,37 @@ function Modal({title,onClose,children,wide,footer}) {
 
 /* ── Image Uploader ── */
 function ImgUpload({value,onChange}) {
-  const [prog,setProg]=useState(0),[busy,setBusy]=useState(false),[err,setErr]=useState(''),[drag,setDrag]=useState(false)
+  const [prog,setProg]=useState(0),[busy,setBusy]=useState(false),[err,setErr]=useState('')
   const ref=useRef()
   async function handle(file) {
     if(!file||!file.type.startsWith('image/')) { setErr('Select an image file'); return }
-    if(file.size>10*1024*1024) { setErr('Max 10 MB'); return }
+    if(file.size>5*1024*1024) { setErr('Max 5 MB'); return }
     setErr(''); setBusy(true); setProg(0)
     try { onChange(await uploadImage(file,setProg)) } catch(e) { setErr(e.message) }
     setBusy(false); setProg(0)
   }
   return (
-    <div className="field">
+    <div className="field" style={{marginBottom:4}}>
       <label>Product Image</label>
-      {value&&!busy&&(
-        <div style={{position:'relative',height:130,background:'var(--line-2)',marginBottom:8,overflow:'hidden',borderRadius:12}}>
-          <img src={cdn(value,400)} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-          <div style={{position:'absolute',inset:0,background:'rgba(13,27,62,.5)',display:'flex',alignItems:'center',justifyContent:'center',gap:8,opacity:0,transition:'opacity .15s'}}
-            onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=0}>
-            <button type="button" className="btn btn-dark btn-sm" onClick={()=>ref.current?.click()}>Change</button>
-            <button type="button" className="btn btn-line btn-sm" style={{color:'#fff',borderColor:'rgba(255,255,255,.3)',background:'transparent'}} onClick={()=>onChange('')}>Remove</button>
-          </div>
-        </div>
-      )}
-      {!value&&(
-        <div onClick={()=>!busy&&ref.current?.click()}
-          onDragOver={e=>{e.preventDefault();setDrag(true)}} onDragLeave={()=>setDrag(false)}
-          onDrop={e=>{e.preventDefault();setDrag(false);handle(e.dataTransfer.files[0])}}
-          style={{height:90,border:`2px dashed ${drag?'var(--ink)':'var(--line)'}`,background:drag?'var(--line-2)':'var(--bg)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:12,marginBottom:8,transition:'all .15s'}}>
+      <div style={{display:'flex',alignItems:'center',gap:14}}>
+        <div onClick={()=>!busy&&ref.current?.click()} style={{width:72,height:72,borderRadius:10,background:'var(--line-2)',border:'1px solid var(--line)',overflow:'hidden',flexShrink:0,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',position:'relative'}}>
           {busy
-            ? <div style={{textAlign:'center'}}><div style={{fontSize:12,color:'var(--ink-2)',marginBottom:6}}>Uploading {prog}%</div><div style={{width:120,height:3,background:'var(--line)',borderRadius:2}}><div style={{height:'100%',background:'var(--ink)',width:`${prog}%`,transition:'width .2s',borderRadius:2}}/></div></div>
-            : <><div style={{fontSize:13,color:'var(--ink-2)',fontWeight:500}}>Drop image or click to upload</div><div style={{fontSize:11,color:'var(--ink-3)',marginTop:3}}>JPG / PNG / WebP · max 10 MB</div></>
+            ? <span style={{fontSize:11,color:'var(--ink-2)',fontWeight:600}}>{prog}%</span>
+            : value
+              ? <img src={cdn(value,160)} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+              : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--ink-3)" strokeWidth="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
           }
         </div>
-      )}
-      {value&&!busy&&<button type="button" style={{background:'none',border:'none',cursor:'pointer',fontSize:11,color:'var(--ink-3)',marginBottom:6}} onClick={()=>ref.current?.click()}>↑ Upload different image</button>}
-      <input className="field-input" value={value||''} onChange={e=>onChange(e.target.value)} placeholder="Or paste Cloudinary URL…" style={{height:34,fontSize:12}}/>
-      {err&&<p style={{fontSize:11,color:'var(--bad)',marginTop:4}}>{err}</p>}
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+            <button type="button" className="btn btn-line btn-sm" onClick={()=>ref.current?.click()} disabled={busy}>Choose File</button>
+            {value&&!busy&&<button type="button" className="btn btn-sm" style={{background:'transparent',color:'var(--bad)',padding:'5px 8px'}} onClick={()=>onChange('')}>Remove</button>}
+            {!value&&<span style={{fontSize:12,color:'var(--ink-3)'}}>No file chosen</span>}
+          </div>
+          <div style={{fontSize:11,color:'var(--ink-3)',marginTop:6}}>JPG, PNG up to 5MB</div>
+        </div>
+      </div>
+      {err&&<p style={{fontSize:11,color:'var(--bad)',marginTop:6}}>{err}</p>}
       <input ref={ref} type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files[0];if(f)handle(f);e.target.value=''}}/>
     </div>
   )
@@ -827,6 +822,7 @@ function Products() {
   async function del(id) { if(!confirm('Delete product?')) return; await supabase.from('products').delete().eq('id',id); load() }
   async function toggleVis(id,v) { await supabase.from('products').update({visible:!v}).eq('id',id); setProducts(ps=>ps.map(p=>p.id===id?{...p,visible:!v}:p)) }
   const blank={name:'',category:'',price:0,cost_price:0,quantity:0,image:'',description:'',visible:true,wholesale_price:0,wholesale_min_qty:0}
+  const categories=[...new Set(products.map(p=>p.category).filter(Boolean))].sort()
   const stockStatus=q=>q===0?['Out of Stock','stock-crit']:q<=3?['Critical','stock-crit']:q<=10?['Low Stock','stock-low']:['In Stock','stock-ok']
   const filtered=products.filter(p=>{
     if(search&&!p.name.toLowerCase().includes(search.toLowerCase())&&!(p.category||'').toLowerCase().includes(search.toLowerCase())) return false
@@ -841,29 +837,31 @@ function Products() {
         </Modal>
       )}
       {editing&&(
-        <Modal title={editing.id?'Edit Product':'New Product'} onClose={()=>setEditing(null)} wide
-          footer={<><button className="btn btn-dark" onClick={save} disabled={saving||!editing.name?.trim()}>{saving?'Saving…':editing.id?'Save Changes':'Add Product'}</button><button className="btn btn-line" onClick={()=>setEditing(null)}>Cancel</button></>}>
+        <Modal title={editing.id?'Edit Product':'Add Product'} onClose={()=>setEditing(null)}
+          footer={<><button className="btn btn-line" style={{flex:'0 0 auto',minWidth:110,justifyContent:'center'}} onClick={()=>setEditing(null)}>Cancel</button><button className="btn btn-dark" style={{flex:1,justifyContent:'center'}} onClick={save} disabled={saving||!editing.name?.trim()}>{saving?'Saving…':'Save'}</button></>}>
           <ImgUpload value={editing.image||''} onChange={v=>setEditing({...editing,image:v})}/>
-          <div style={{display:'grid',gap:0,borderTop:'1px solid #f0f0f0',paddingTop:14}}>
-            <Field label="Product Name" value={editing.name} onChange={v=>setEditing({...editing,name:v})} placeholder="e.g. Rattan Side Table" required/>
-            <Field label="Category" value={editing.category} onChange={v=>setEditing({...editing,category:v})} placeholder="e.g. Furniture"/>
-            <TextArea label="Description" value={editing.description} onChange={v=>setEditing({...editing,description:v})} placeholder="Short description shown to customers" rows={2}/>
+          <div className="field" style={{marginTop:18}}>
+            <label>Name</label>
+            <input className="field-input" value={editing.name||''} onChange={e=>setEditing({...editing,name:e.target.value})} placeholder="e.g. Ceramic Vase"/>
           </div>
-          <div style={{border:'1px solid #f0f0f0',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
-            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--ink-3)',marginBottom:12}}>Pricing</div>
-            <div className="form-grid-2">
-              <NumField label="Selling Price (GH₵)" value={editing.price} onChange={v=>setEditing({...editing,price:v})} required/>
-              <NumField label="Cost Price (GH₵)" value={editing.cost_price} onChange={v=>setEditing({...editing,cost_price:v})}/>
-            </div>
-            {editing.price>0&&editing.cost_price>0&&<div style={{fontSize:12,color:'var(--good)',marginTop:4,fontWeight:600}}>Margin: {ghs(editing.price-editing.cost_price)} ({((editing.price-editing.cost_price)/editing.price*100).toFixed(0)}%)</div>}
+          <div className="field">
+            <label>Category</label>
+            <input className="field-input" list="cat-list" value={editing.category||''} onChange={e=>setEditing({...editing,category:e.target.value})} placeholder="Select or type a category…"/>
+            <datalist id="cat-list">{categories.map(c=><option key={c} value={c}/>)}</datalist>
           </div>
-          <div style={{border:'1px solid #f0f0f0',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
-            <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--ink-3)',marginBottom:12}}>Stock & Wholesale</div>
-            <div className="form-grid-3">
-              <NumField label="Opening Qty" value={editing.quantity} onChange={v=>setEditing({...editing,quantity:v})} step="1"/>
-              <NumField label="Wholesale Price" value={editing.wholesale_price} onChange={v=>setEditing({...editing,wholesale_price:v})}/>
-              <NumField label="Wholesale Min Qty" value={editing.wholesale_min_qty} onChange={v=>setEditing({...editing,wholesale_min_qty:v})} step="1"/>
-            </div>
+          <div className="field">
+            <label>Description <span style={{color:'var(--ink-3)',fontWeight:400}}>(optional)</span></label>
+            <textarea className="field-textarea" rows={2} value={editing.description||''} onChange={e=>setEditing({...editing,description:e.target.value})} placeholder="Short description shown to customers"/>
+          </div>
+          <div className="form-grid-2">
+            <div className="field"><label>Cost (GH₵)</label><input type="number" min="0" step="0.01" className="field-input" value={editing.cost_price||''} onChange={e=>setEditing({...editing,cost_price:Number(e.target.value)})} placeholder="0.00"/></div>
+            <div className="field"><label>Price (GH₵) <span style={{color:'var(--bad)'}}>*</span></label><input type="number" min="0" step="0.01" className="field-input" value={editing.price||''} onChange={e=>setEditing({...editing,price:Number(e.target.value)})} placeholder="0.00"/></div>
+          </div>
+          {editing.price>0&&editing.cost_price>0&&<div style={{fontSize:12,color:'var(--good)',marginTop:-4,marginBottom:12,fontWeight:600}}>Margin: {ghs(editing.price-editing.cost_price)} ({((editing.price-editing.cost_price)/editing.price*100).toFixed(0)}%)</div>}
+          <div className="form-grid-3">
+            <div className="field"><label>Wholesale Price</label><input type="number" min="0" step="0.01" className="field-input" value={editing.wholesale_price||''} onChange={e=>setEditing({...editing,wholesale_price:Number(e.target.value)})} placeholder="0.00"/></div>
+            <div className="field"><label>Min Qty</label><input type="number" min="0" step="1" className="field-input" value={editing.wholesale_min_qty||''} onChange={e=>setEditing({...editing,wholesale_min_qty:Number(e.target.value)})} placeholder="e.g. 6"/></div>
+            <div className="field"><label>Stock</label><input type="number" min="0" step="1" className="field-input" value={editing.quantity||''} onChange={e=>setEditing({...editing,quantity:Number(e.target.value)})} placeholder="0"/></div>
           </div>
           <Toggle on={editing.visible} onToggle={()=>setEditing({...editing,visible:!editing.visible})} label="Visible in Store" sub="Customers can see and buy this product"/>
         </Modal>
