@@ -330,11 +330,36 @@
   .statcards { grid-template-columns: 1fr; }
 }
 
+/* ════════════════════════════════════════════════════════
+   THERMAL RECEIPT PRINT (80mm roll)
+   When a receipt modal is open and the user prints, only the
+   receipt prints — sized to an 80mm roll, monospace, no margins.
+   ════════════════════════════════════════════════════════ */
 @media print {
-  .rail, .drawer, .scrim, .modal__head, .modal__foot { display: none !important; }
-  .main { margin-left: 0; }
-  .ovl { position: static; background: #fff; padding: 0; overflow: visible; }
-  .modal { box-shadow: none; max-width: none; }
+  @page { size: 80mm auto; margin: 0; }
+
+  /* hide the whole app… */
+  body * { visibility: hidden !important; }
+  /* …except the open receipt and its contents */
+  .receipt, .receipt * { visibility: visible !important; }
+
+  /* neutralise the modal chrome so only the receipt shows on the roll */
+  .ovl { position: static !important; inset: auto !important; background: #fff !important; padding: 0 !important; overflow: visible !important; backdrop-filter: none !important; }
+  .modal { position: static !important; display: block !important; box-shadow: none !important; border-radius: 0 !important; max-width: none !important; width: 80mm !important; margin: 0 !important; }
+  .modal__head, .modal__foot { display: none !important; }
+  .modal__body { padding: 0 !important; }
+
+  .receipt {
+    position: absolute; top: 0; left: 0;
+    width: 80mm !important;
+    padding: 4mm 5mm !important;
+    font-family: "Courier New", ui-monospace, monospace !important;
+    font-size: 12px !important; line-height: 1.45 !important; color: #000 !important;
+  }
+  .receipt__brand { font-size: 18px !important; font-weight: 700 !important; letter-spacing: 0 !important; }
+  .receipt__row { font-size: 12px !important; padding: 2px 0 !important; }
+  .receipt__rule { border-top: 1px dashed #000 !important; margin: 6px 0 !important; }
+  .receipt .badge { border: 1px solid #000 !important; background: #fff !important; color: #000 !important; padding: 0 4px !important; }
 }
 
 /* ─────────────── POS ─────────────── */

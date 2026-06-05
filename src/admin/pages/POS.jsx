@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { ghs, today, isoNow, shortId } from '../lib/format'
+import { ghs, today, isoNow, fmtDateTime, shortId } from '../lib/format'
 import { cdn } from '../lib/cloudinary'
 import { useAsync, toast } from '../lib/hooks'
-import { SearchBar, Spinner, Empty, Button } from '../ui'
+import { SearchBar, Spinner, Empty, Button, Badge } from '../ui'
 import { PageHeader } from '../ui/Layout'
+import Modal from '../ui/Modal'
 import Icon from '../ui/Icon'
 
 export default function POS({ session }) {
@@ -19,6 +20,7 @@ export default function POS({ session }) {
   const [phone, setPhone] = useState('')
   const [discount, setDiscount] = useState(0)
   const [saving, setSaving] = useState(false)
+  const [lastSale, setLastSale] = useState(null)
 
   const list = (products || []).filter(p => !search || p.name.toLowerCase().includes(search.toLowerCase()))
 
@@ -57,6 +59,7 @@ export default function POS({ session }) {
     setSaving(false)
     if (error) return toast(error.message, 'bad')
     toast(`Sale complete · ${ghs(total)}`, 'good')
+    setLastSale(sale)
     setCart([]); setDiscount(0); setCustomer(''); setPhone(''); reload()
   }
 
@@ -121,6 +124,36 @@ export default function POS({ session }) {
           </div>
         </aside>
       </div>
+
+      {lastSale && (
+        <Modal title="Sale Complete" onClose={() => setLastSale(null)} size="sm"
+          footer={<>
+            <Button variant="line" icon="print" onClick={() => window.print()}>Print Receipt</Button>
+            <Button onClick={() => setLastSale(null)}>New Sale</Button>
+          </>}>
+          <div className="receipt">
+            <div className="receipt__brand">Esterea Home</div>
+            <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--ink-3)', marginBottom: 2 }}>Accra, Ghana · 0547927722</div>
+            <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--ink-3)', marginBottom: 10 }}>{fmtDateTime(lastSale.date)}</div>
+            <div className="receipt__rule" />
+            <div className="receipt__row"><span className="cell-dim">Receipt</span><span className="cell-mono">{lastSale.receipt_no}</span></div>
+            <div className="receipt__row"><span className="cell-dim">Customer</span><span>{lastSale.customer_name || 'Walk-in'}</span></div>
+            {lastSale.staff_name && <div className="receipt__row"><span className="cell-dim">Served by</span><span>{lastSale.staff_name}</span></div>}
+            <div className="receipt__rule" />
+            {lastSale.items.map((it, i) => (
+              <div key={i} className="receipt__row"><span>{it.qty}× {it.name}</span><span>{ghs(it.price * it.qty)}</span></div>
+            ))}
+            <div className="receipt__rule" />
+            <div className="receipt__row"><span className="cell-dim">Subtotal</span><span>{ghs(lastSale.subtotal)}</span></div>
+            {lastSale.discount > 0 && <div className="receipt__row"><span className="cell-dim">Discount</span><span>−{ghs(lastSale.discount)}</span></div>}
+            <div className="receipt__row" style={{ fontSize: 15, fontWeight: 700 }}><span>Total</span><span>{ghs(lastSale.total)}</span></div>
+            <div className="receipt__row"><span className="cell-dim">Payment</span><Badge>{lastSale.payment}</Badge></div>
+            <div className="receipt__rule" />
+            <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--ink-3)', marginTop: 6 }}>Thank you for shopping with us!</div>
+            <div style={{ textAlign: 'center', fontSize: 10, color: 'var(--ink-3)', marginTop: 2 }}>estereahome.com</div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

@@ -53,7 +53,12 @@ export default function Receipts() {
           </>}>
           <div className="receipt">
             <div className="receipt__brand">Esterea Home</div>
-            <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--ink-3)', marginBottom: 12 }}>Accra, Ghana · {fmtDateTime(detail.date)}</div>
+            <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--ink-3)', marginBottom: 2 }}>Accra, Ghana · 0547927722</div>
+            <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--ink-3)', marginBottom: 10 }}>{fmtDateTime(detail.date)}</div>
+            <div className="receipt__rule" />
+            <div className="receipt__row"><span className="cell-dim">Receipt</span><span className="cell-mono">{detail.receipt_no}</span></div>
+            <div className="receipt__row"><span className="cell-dim">Customer</span><span>{detail.customer_name || 'Walk-in'}</span></div>
+            {detail.staff_name && <div className="receipt__row"><span className="cell-dim">Served by</span><span>{detail.staff_name}</span></div>}
             <div className="receipt__rule" />
             {(detail.items || []).map((it, i) => (
               <div key={i} className="receipt__row"><span>{it.qty}× {it.name}</span><span>{ghs(it.price * it.qty)}</span></div>
@@ -63,7 +68,9 @@ export default function Receipts() {
             {detail.discount > 0 && <div className="receipt__row"><span className="cell-dim">Discount</span><span>−{ghs(detail.discount)}</span></div>}
             <div className="receipt__row" style={{ fontSize: 15, fontWeight: 700 }}><span>Total</span><span>{ghs(detail.total)}</span></div>
             <div className="receipt__row"><span className="cell-dim">Payment</span><Badge>{detail.payment}</Badge></div>
-            <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--ink-3)', marginTop: 14 }}>Thank you for shopping with us!</div>
+            <div className="receipt__rule" />
+            <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--ink-3)', marginTop: 6 }}>Thank you for shopping with us!</div>
+            <div style={{ textAlign: 'center', fontSize: 10, color: 'var(--ink-3)', marginTop: 2 }}>estereahome.com</div>
           </div>
         </Modal>
       )}
