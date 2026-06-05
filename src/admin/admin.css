@@ -4,7 +4,11 @@
    Namespaced classes, one source of truth per component.
    ════════════════════════════════════════════════════════ */
 
-.admin {
+/* Design tokens. Scoped to .admin AND the portal-rendered modal
+   elements (.ovl/.modal mount at <body>, outside .admin) so both
+   resolve the variables — without polluting the global :root and
+   clashing with the storefront's own tokens. */
+.admin, .ovl, .modal {
   --page:   #f3f4f6;
   --card:   #ffffff;
   --dark:   #0f1729;
@@ -23,7 +27,9 @@
   --rail:   72px;
   --drawer: 252px;
   --font:   "Inter", system-ui, -apple-system, sans-serif;
+}
 
+.admin {
   font-family: var(--font);
   color: var(--ink);
   background: var(--page);

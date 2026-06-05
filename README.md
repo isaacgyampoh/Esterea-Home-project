@@ -1,16 +1,46 @@
-# React + Vite
+# Esterea Home
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Décor e-commerce **shop + interior services** for Esterea Home (Accra, Ghana).
+Single React app: customers see the storefront; staff use the admin at `/#/admin`.
 
-Currently, two official plugins are available:
+**Live:** https://estereahome.com · **Admin:** https://estereahome.com/#/admin
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Stack
+- React 19 + Vite
+- Supabase (Postgres) — data
+- Cloudinary — product/service images
+- Paystack (Mobile Money) — online checkout
+- Deployed on Vercel (auto-deploys from `main`)
 
-## React Compiler
+## Project structure
+```
+src/
+  App.jsx              Storefront + routes to Admin
+  index.css            Storefront styles (green-accent theme)
+  admin/
+    Admin.jsx          Shell: auth, rail, drawer, router, toasts
+    admin.css          Admin design system
+    nav.js             Navigation config (single source of truth)
+    lib/               supabase, auth, format, cloudinary, hooks, categories
+    ui/                Reusable primitives (Modal, Button, fields, Table, …)
+    pages/             One file per feature (POS, Products, Services, …)
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## First-time database setup
+Run **`DATABASE_SETUP.sql`** in the Supabase SQL editor. It is idempotent —
+safe to run anytime; it only creates what's missing.
 
-## Expanding the ESLint configuration
+## Access & roles
+- **Admin** signs in with the admin password (default `esterea2026`,
+  changeable in Staff & Access). Full access.
+- **Staff / Cashiers** sign in with a 4–6 digit PIN. They only see POS,
+  Receipts, Online Orders, and Refunds. Every sale records who made it.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Image uploads
+Cloudinary unsigned preset **`esterea_unsigned`** on cloud **`dls9fai0i`**.
+
+## Receipts
+80mm thermal printer. POS shows a printable receipt after each sale.
+
+## Deploy
+Push to `main` → Vercel auto-deploys (~60s). Hard-refresh after deploys.
