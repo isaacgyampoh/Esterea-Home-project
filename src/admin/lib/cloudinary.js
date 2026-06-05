@@ -1,4 +1,4 @@
-const CLOUD  = 'dls9fai0i'
+const CLOUD  = 'dd6iapard'
 const PRESET = 'esterea_unsigned'
 
 // Transform a Cloudinary URL to a width-optimised version.
