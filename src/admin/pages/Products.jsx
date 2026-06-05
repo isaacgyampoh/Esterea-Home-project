@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { ghs, uniq } from '../lib/format'
 import { cdn } from '../lib/cloudinary'
+import { DEFAULT_CATEGORIES } from '../lib/categories'
 import { useAsync, toast } from '../lib/hooks'
 import { Button, Input, NumberInput, TextArea, Combo, Toggle, SearchBar, Tabs, Spinner, Empty } from '../ui'
 import { PageHeader, Panel, Table } from '../ui/Layout'
@@ -23,7 +24,7 @@ export default function Products() {
   const [filter, setFilter] = useState('all')
 
   const list = products || []
-  const categories = uniq(list.map(p => p.category).filter(Boolean)).sort()
+  const categories = uniq([...DEFAULT_CATEGORIES, ...list.map(p => p.category).filter(Boolean)]).sort()
 
   const filtered = list.filter(p => {
     if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !(p.category || '').toLowerCase().includes(search.toLowerCase())) return false
