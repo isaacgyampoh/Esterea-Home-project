@@ -56,7 +56,7 @@ function Card({ p, promo, onOpen, onAdd }) {
       <div className="card-img" style={{ position:'relative', aspectRatio:'1/1', borderRadius:'var(--r-md)', overflow:'hidden', background:'var(--cream)' }}>
         {p.image
           ? <img src={img(p.image,600)} alt={p.name} loading="lazy" style={{ width:'100%', height:'100%', objectFit:'cover', transition:'transform .5s ease' }} className="card-zoom" />
-          : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', color:'#ddd', fontSize:34, fontFamily:'var(--serif)' }}>E</div>
+          : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', color:'#ddd', fontSize:34, fontWeight:700 }}>E</div>
         }
         {promo && <span style={{ position:'absolute', top:10, left:10, background:'var(--green)', color:'#fff', fontSize:9, letterSpacing:'.06em', fontWeight:700, padding:'3px 9px', borderRadius:20, textTransform:'uppercase' }}>Sale</span>}
       </div>
@@ -236,7 +236,7 @@ function Store() {
       {/* ── NAV ── */}
       <nav style={{ position:'sticky', top:0, zIndex:50, background:'rgba(255,255,255,.96)', backdropFilter:'blur(12px)', borderBottom:'1px solid #e2e2e2' }}>
         <div style={{ ...S.page, display:'flex', alignItems:'center', justifyContent:'space-between', height:56 }}>
-          <button onClick={()=>go('home','/')} style={{ background:'none', border:'none', cursor:'pointer', fontFamily:'var(--serif)', fontSize:21, fontWeight:600, color:'#111', letterSpacing:'.01em' }}>
+          <button onClick={()=>go('home','/')} style={{ background:'none', border:'none', cursor:'pointer', fontSize:20, fontWeight:800, color:'#111', letterSpacing:'-.02em' }}>
             Esterea Home
           </button>
           <div style={{ display:'flex', alignItems:'center', gap:30 }}>
@@ -273,14 +273,14 @@ function Store() {
               <img src={img(p.image,1600)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', filter:'brightness(.5)' }} />
             </div>
           ))}
-          {!heroes.length && <div style={{ position:'absolute', inset:0, background:'#1a1a1a' }} />}
+          {!heroes.length && <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg, #1a2e22 0%, #0f1a14 50%, #1a1a1a 100%)' }} />}
           <div style={{ position:'absolute', inset:0, background:'linear-gradient(to right, rgba(0,0,0,.65) 0%, rgba(0,0,0,.25) 60%, transparent 100%)' }} />
           <div style={{ position:'relative', zIndex:1, height:'100%', display:'flex', flexDirection:'column', justifyContent:'center', ...S.page }}>
             <div style={{ maxWidth:560 }}>
               <div style={{ display:'inline-flex', alignItems:'center', gap:6, color:'#5fd397', fontSize:11, letterSpacing:'.14em', textTransform:'uppercase', fontWeight:600, marginBottom:18 }}>
                 {Ico.pin} Aviation Road, Accra
               </div>
-              <h1 className="anim-up" style={{ fontFamily:'var(--serif)', fontSize:'clamp(36px,6vw,62px)', fontWeight:500, color:'#fff', lineHeight:1.05, marginBottom:18, letterSpacing:'-.01em' }}>
+              <h1 className="anim-up" style={{ fontSize:'clamp(34px,5.5vw,58px)', fontWeight:800, color:'#fff', lineHeight:1.08, marginBottom:18, letterSpacing:'-.03em' }}>
                 Home essentials,<br/>delivered to you.
               </h1>
               <p style={{ fontSize:15, color:'rgba(255,255,255,.78)', lineHeight:1.6, marginBottom:28, maxWidth:440 }}>
@@ -345,7 +345,13 @@ function Store() {
           </div>
           {loading
             ? <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))', gap:'28px 22px' }}>{[...Array(10)].map((_,i)=><CardSkel key={i}/>)}</div>
-            : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))', gap:'28px 22px' }}>
+            : products.length===0
+              ? <div style={{ textAlign:'center', padding:'60px 20px', color:'var(--ink-3)' }}>
+                  <div style={{ fontSize:40, marginBottom:12 }}>🛍️</div>
+                  <div style={{ fontSize:15, fontWeight:600, color:'var(--ink-2)', marginBottom:6 }}>No products yet</div>
+                  <div style={{ fontSize:13 }}>Check back soon — we're stocking up.</div>
+                </div>
+              : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))', gap:'28px 22px' }}>
                 {products.slice(0,10).map((p,i)=><div key={p.id} className={`d${Math.min(i+1,4)}`}><Card p={p} promo={promo(p.id)} onOpen={()=>openDetail(p)} onAdd={()=>addCart(p)}/></div>)}
               </div>
           }
@@ -356,7 +362,7 @@ function Store() {
           <div style={{ ...S.page, display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:32 }}>
             {[['Curated Quality','Every piece is handpicked for Ghanaian homes.'],['Nationwide Delivery','We deliver across Ghana — fast and reliable.'],['WhatsApp Support','Questions? Message us anytime.']].map(([t,d])=>(
               <div key={t}>
-                <div style={{ fontFamily:'var(--serif)', fontSize:18, color:'#fff', marginBottom:6 }}>{t}</div>
+                <div style={{ fontSize:15, fontWeight:700, color:'#fff', marginBottom:6, letterSpacing:'-.01em' }}>{t}</div>
                 <div style={{ fontSize:12, color:'rgba(255,255,255,.45)', lineHeight:1.6 }}>{d}</div>
               </div>
             ))}
@@ -399,7 +405,7 @@ function Store() {
             </div>
             <div className="anim-up">
               {detail.category && <div style={{ fontSize:10, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:10 }}>{detail.category}</div>}
-              <h1 style={{ fontFamily:'var(--serif)', fontSize:32, fontWeight:500, lineHeight:1.2, marginBottom:16 }}>{detail.name}</h1>
+              <h1 style={{ fontSize:28, fontWeight:800, lineHeight:1.15, marginBottom:16, letterSpacing:'-.02em' }}>{detail.name}</h1>
               {detail.description && <p style={{ fontSize:14, color:'var(--ink-2)', lineHeight:1.7, marginBottom:20 }}>{detail.description}</p>}
               <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:8 }}>
                 <span style={{ fontSize:26, fontWeight:700 }}>{ghs(promo(detail.id)?promo(detail.id).price:detail.price)}</span>
@@ -422,7 +428,7 @@ function Store() {
       {pg==='cart' && (
         <div style={{ ...S.narrow, padding:'32px 20px 60px' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:28 }}>
-            <h1 style={{ fontFamily:'var(--serif)', fontSize:28, fontWeight:400 }}>Cart {cc>0 && <span style={{ fontSize:14, color:'#aaa', fontFamily:'var(--sans)', fontWeight:400 }}>({cc})</span>}</h1>
+            <h1 style={{ fontSize:24, fontWeight:800, letterSpacing:'-.02em' }}>Cart {cc>0 && <span style={{ fontSize:14, color:'#aaa', fontFamily:'var(--sans)', fontWeight:400 }}>({cc})</span>}</h1>
             {cc>0 && <button onClick={()=>setCart([])} style={{ background:'none', border:'none', cursor:'pointer', fontSize:11, color:'#bbb', textDecoration:'underline' }}>Clear</button>}
           </div>
           {cart.length===0
@@ -465,7 +471,7 @@ function Store() {
       {pg==='checkout' && (
         <div style={{ ...S.narrow, padding:'32px 20px 60px' }}>
           <button onClick={()=>go('cart','/cart')} style={{ background:'none', border:'none', cursor:'pointer', display:'flex', alignItems:'center', gap:6, color:'#888', fontSize:12, marginBottom:24 }}>{Ico.back} Cart</button>
-          <h1 style={{ fontFamily:'var(--serif)', fontSize:28, fontWeight:400, marginBottom:28 }}>Checkout</h1>
+          <h1 style={{ fontSize:24, fontWeight:800, letterSpacing:'-.02em', marginBottom:28 }}>Checkout</h1>
 
           <div style={{ display:'flex', gap:8, marginBottom:24, background:'#f5f5f3', padding:4, borderRadius:2 }}>
             {[['delivery','Delivery'],['pickup','Pickup']].map(([v,l])=>(
@@ -506,7 +512,7 @@ function Store() {
       {pg==='success' && orderResult && (
         <div className="anim-up" style={{ ...S.narrow, padding:'64px 20px', textAlign:'center' }}>
           <div style={{ width:56, height:56, background:'#111', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 24px', color:'#fff', fontSize:22 }}>✓</div>
-          <h1 style={{ fontFamily:'var(--serif)', fontSize:28, fontWeight:400, marginBottom:8 }}>Order Confirmed</h1>
+          <h1 style={{ fontSize:24, fontWeight:800, letterSpacing:'-.02em', marginBottom:8 }}>Order Confirmed</h1>
           <p style={{ color:'#888', fontSize:13, marginBottom:32 }}>Payment received. We'll be in touch shortly.</p>
           <div style={{ textAlign:'left', borderTop:'1px solid #e2e2e2', borderBottom:'1px solid #e2e2e2', padding:'16px 0', marginBottom:28 }}>
             {[['Order',<code style={{ fontFamily:'var(--sans)', fontWeight:600 }}>{orderResult.orderNo}</code>],['Total',ghs(orderResult.total)],[orderResult.fulfill==='pickup'?'Pickup':'Delivery',orderResult.fulfill==='pickup'?'Accra, Ghana':"We'll contact you"]].map(([k,v])=>(
@@ -525,7 +531,7 @@ function Store() {
       {/* ══════ TRACK ══════ */}
       {pg==='track' && (
         <div style={{ ...S.narrow, padding:'32px 20px 60px' }}>
-          <h1 style={{ fontFamily:'var(--serif)', fontSize:28, fontWeight:400, marginBottom:8 }}>Track Order</h1>
+          <h1 style={{ fontSize:24, fontWeight:800, letterSpacing:'-.02em', marginBottom:8 }}>Track Order</h1>
           <p style={{ fontSize:13, color:'#888', marginBottom:28 }}>Enter your phone number to view your orders.</p>
           <div style={{ display:'flex', gap:8, marginBottom:32 }}>
             <input type="tel" value={tPhone} onChange={e=>setTPhone(e.target.value)} onKeyDown={e=>e.key==='Enter'&&track()} placeholder="024 000 0000" style={{ flex:1, height:44, padding:'0 14px', borderRadius:2 }} />
@@ -556,7 +562,7 @@ function Store() {
       <footer style={{ background:'#111', color:'rgba(255,255,255,.5)', marginTop:40 }}>
         <div style={{ ...S.page, display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:32, padding:'40px 20px 28px' }}>
           <div>
-            <div style={{ fontFamily:'var(--serif)', fontSize:18, color:'#fff', marginBottom:10 }}>Esterea Home</div>
+            <div style={{ fontSize:17, fontWeight:800, color:'#fff', marginBottom:10, letterSpacing:'-.01em' }}>Esterea Home</div>
             <p style={{ fontSize:11, lineHeight:1.7 }}>Premium home decor & furnishings for Ghanaian homes.</p>
           </div>
           <div>

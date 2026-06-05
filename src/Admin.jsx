@@ -227,7 +227,7 @@ export default function Admin() {
       <div className="auth-card">
         <div style={{textAlign:'center',marginBottom:26}}>
           <div className="auth-mark">E</div>
-          <div style={{fontFamily:'var(--serif)',fontSize:22,color:'var(--ink)'}}>Esterea Home</div>
+          <div style={{fontSize:20,fontWeight:800,color:'var(--ink)',letterSpacing:'-.02em'}}>Esterea Home</div>
           <div style={{fontSize:10,letterSpacing:'.22em',textTransform:'uppercase',color:'var(--ink-3)',marginTop:5}}>Admin Access</div>
         </div>
         <div className="field">
@@ -517,7 +517,7 @@ function POS() {
       {lastReceipt&&(
         <Modal title="Receipt" onClose={()=>setLastReceipt(null)} footer={<><button className="btn btn-dark" onClick={()=>window.print()}>{I.print} Print</button><button className="btn btn-line" onClick={()=>setLastReceipt(null)}>Close</button></>}>
           <div style={{textAlign:'center',marginBottom:20,paddingTop:8}}>
-            <div style={{fontFamily:'var(--serif)',fontSize:22,fontWeight:600,color:'var(--ink)'}}>Esterea Home</div>
+            <div style={{fontSize:20,fontWeight:800,color:'var(--ink)',letterSpacing:'-.02em'}}>Esterea Home</div>
             <div style={{fontSize:11,color:'var(--ink-3)'}}>Accra, Ghana · 0547927722</div>
             <div style={{fontSize:11,color:'var(--ink-3)',marginTop:2}}>{fmt(lastReceipt.date)}</div>
             <div style={{fontSize:10,fontFamily:'monospace',color:'var(--ink-3)',marginTop:2}}>{lastReceipt.receipt_no}</div>
@@ -548,7 +548,7 @@ function POS() {
               <div key={p.id} className="pos-card" onClick={()=>add(p)}>
                 {p.image
                   ? <img src={cdn(p.image,240)} className="pos-card-img" alt={p.name}/>
-                  : <div className="pos-card-img" style={{display:'flex',alignItems:'center',justifyContent:'center',color:'#ddd',fontSize:28,fontFamily:'var(--serif)'}}>E</div>
+                  : <div className="pos-card-img" style={{display:'flex',alignItems:'center',justifyContent:'center',color:'#ddd',fontSize:26,fontWeight:800}}>E</div>
                 }
                 <div className="pos-card-name">{p.name}</div>
                 <div className="pos-card-price">{ghs(p.price)}</div>
@@ -715,7 +715,7 @@ function Receipts() {
       {detail&&(
         <Modal title={`Receipt ${detail.receipt_no}`} onClose={()=>setDetail(null)} footer={<><button className="btn btn-dark" onClick={()=>window.print()}>{I.print} Print</button><button className="btn btn-line" onClick={()=>setDetail(null)}>Close</button></>}>
           <div style={{textAlign:'center',marginBottom:20,paddingTop:8}}>
-            <div style={{fontFamily:'var(--serif)',fontSize:22,color:'var(--ink)'}}>Esterea Home</div>
+            <div style={{fontSize:20,fontWeight:800,color:'var(--ink)',letterSpacing:'-.02em'}}>Esterea Home</div>
             <div style={{fontSize:11,color:'var(--ink-3)'}}>Accra, Ghana · 0547927722</div>
             <div style={{fontSize:11,color:'var(--ink-3)',marginTop:2}}>{fmt(detail.date)}</div>
             <div style={{fontSize:10,fontFamily:'monospace',color:'var(--ink-3)'}}>{detail.receipt_no}</div>
@@ -892,7 +892,7 @@ function Products() {
                   <tr key={p.id} style={{opacity:p.visible?1:.55}}>
                     <td>
                       <div style={{display:'flex',alignItems:'center',gap:12}}>
-                        {p.image?<img src={cdn(p.image,84)} className="row-thumb" alt=""/>:<div className="row-thumb" style={{display:'flex',alignItems:'center',justifyContent:'center',color:'#ddd',fontFamily:'var(--serif)',fontSize:18}}>E</div>}
+                        {p.image?<img src={cdn(p.image,84)} className="row-thumb" alt=""/>:<div className="row-thumb" style={{display:'flex',alignItems:'center',justifyContent:'center',color:'#ddd',fontWeight:700,fontSize:16}}>E</div>}
                         <div><div style={{fontSize:13,fontWeight:700,color:'var(--ink)'}}>{p.name}</div></div>
                       </div>
                     </td>
