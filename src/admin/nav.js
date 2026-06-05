@@ -20,6 +20,13 @@ export const NAV = [
     ],
   },
   {
+    section: 'Services',
+    items: [
+      { id: 'services',  label: 'Services',  icon: 'pkg' },
+      { id: 'bookings',  label: 'Bookings',  icon: 'invoice', badge: true },
+    ],
+  },
+  {
     section: 'Business',
     items: [
       { id: 'customers', label: 'Customers', icon: 'users' },

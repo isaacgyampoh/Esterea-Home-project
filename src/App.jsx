@@ -15,7 +15,7 @@ const fmtPh = p => p.replace(/\s+/g,'').replace(/^0/,'233')
 
 function page() {
   const h = window.location.hash.replace('#','') || '/'
-  const map = {'/':'home','/shop':'shop','/detail':'detail','/cart':'cart','/checkout':'checkout','/track':'track','/admin':'admin','/success':'success'}
+  const map = {'/':'home','/shop':'shop','/services':'services','/detail':'detail','/cart':'cart','/checkout':'checkout','/track':'track','/admin':'admin','/success':'success'}
   return map[h] || 'home'
 }
 
@@ -96,10 +96,98 @@ export default function App() {
 }
 
 /* ─── STORE ─── */
+function ServicesPage({ services, go, S }) {
+  const [booking, setBooking] = useState(null) // selected service title or '' for general
+  const [form, setForm] = useState({ name:'', phone:'', message:'' })
+  const [sending, setSending] = useState(false)
+  const [done, setDone] = useState(false)
+
+  async function submit(e) {
+    e.preventDefault()
+    if (!form.name.trim() || !form.phone.trim()) return
+    setSending(true)
+    const record = { service_title: booking || 'General enquiry', name: form.name.trim(), phone: form.phone.trim(), message: form.message.trim(), status:'New' }
+    try { await supabase.from('service_bookings').insert(record) } catch {}
+    setSending(false)
+    setDone(true)
+    // open WhatsApp with prefilled message
+    const text = `Hi Esterea Home! I'd like to book: ${record.service_title}%0AName: ${record.name}%0APhone: ${record.phone}${record.message ? '%0A'+encodeURIComponent(record.message) : ''}`
+    window.open(`https://wa.me/${WA}?text=${text}`, '_blank')
+  }
+
+  return (
+    <div>
+      {/* hero */}
+      <div style={{ background:'linear-gradient(135deg,#0f2419,#1a1a1a)', padding:'64px 0', color:'#fff' }}>
+        <div style={{ ...S.page }}>
+          <div style={{ fontSize:11, letterSpacing:'.14em', textTransform:'uppercase', color:'#5fd397', fontWeight:700, marginBottom:14 }}>Interior & Décor Services</div>
+          <h1 style={{ fontSize:'clamp(30px,5vw,48px)', fontWeight:800, letterSpacing:'-.03em', lineHeight:1.1, marginBottom:16, maxWidth:600 }}>We style spaces, not just sell décor.</h1>
+          <p style={{ fontSize:15, color:'rgba(255,255,255,.75)', maxWidth:480, lineHeight:1.6, marginBottom:26 }}>From a quick styling consultation to a full room makeover, our team designs and sets up beautiful spaces across Ghana.</p>
+          <a href="#book" style={{ display:'inline-flex', padding:'13px 28px', borderRadius:30, background:'#fff', color:'#111', fontSize:13, fontWeight:700, textDecoration:'none' }}>Book a Service</a>
+        </div>
+      </div>
+
+      {/* services list */}
+      <div style={{ ...S.page, padding:'48px 24px' }}>
+        <h2 style={{ fontSize:22, fontWeight:800, letterSpacing:'-.02em', marginBottom:24 }}>What we offer</h2>
+        {services.length === 0 ? (
+          <div style={{ textAlign:'center', padding:'40px', color:'var(--ink-3)' }}>Services coming soon. <a href={`https://wa.me/${WA}`} style={{ color:'var(--green)' }}>Message us</a> in the meantime.</div>
+        ) : (
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:20 }}>
+            {services.map(s=>(
+              <div key={s.id} style={{ border:'1px solid var(--line)', borderRadius:'var(--r-md)', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+                {s.image && <div style={{ height:160, background:'var(--cream)' }}><img src={img(s.image,600)} alt={s.title} style={{ width:'100%', height:'100%', objectFit:'cover' }}/></div>}
+                <div style={{ padding:'20px', display:'flex', flexDirection:'column', flex:1 }}>
+                  <div style={{ fontSize:17, fontWeight:700, marginBottom:8 }}>{s.title}</div>
+                  <div style={{ fontSize:13.5, color:'var(--ink-2)', lineHeight:1.6, marginBottom:16, flex:1 }}>{s.description}</div>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+                    {s.price_from > 0 ? <span style={{ fontSize:14, fontWeight:700, color:'var(--green)' }}>From {ghs(s.price_from)}</span> : <span/>}
+                    <button onClick={()=>{ setBooking(s.title); setDone(false); document.getElementById('book')?.scrollIntoView({behavior:'smooth'}) }} className="btn btn-green" style={{ padding:'9px 18px', borderRadius:8, fontSize:12.5 }}>Book</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* booking form */}
+      <div id="book" style={{ background:'var(--cream)', padding:'56px 0' }}>
+        <div style={{ ...S.page, maxWidth:560 }}>
+          <h2 style={{ fontSize:24, fontWeight:800, letterSpacing:'-.02em', marginBottom:6, textAlign:'center' }}>Request a Service</h2>
+          <p style={{ fontSize:13.5, color:'var(--ink-2)', textAlign:'center', marginBottom:28 }}>Tell us what you need. We'll save your request and continue on WhatsApp.</p>
+          {done ? (
+            <div style={{ background:'#fff', border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:'32px', textAlign:'center' }}>
+              <div style={{ fontSize:18, fontWeight:700, marginBottom:8, color:'var(--green)' }}>Request received ✓</div>
+              <p style={{ fontSize:13.5, color:'var(--ink-2)', lineHeight:1.6 }}>We've saved your request and opened WhatsApp so you can chat with us right away. If it didn't open, call us on {PHONE}.</p>
+              <button onClick={()=>{ setDone(false); setForm({name:'',phone:'',message:''}); setBooking(null) }} className="btn btn-green" style={{ padding:'11px 22px', borderRadius:10, fontSize:13, marginTop:18 }}>Make another request</button>
+            </div>
+          ) : (
+            <form onSubmit={submit} style={{ background:'#fff', border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:'28px' }}>
+              <label style={{ display:'block', fontSize:12, fontWeight:600, color:'var(--ink-2)', marginBottom:6 }}>Service</label>
+              <select value={booking || ''} onChange={e=>setBooking(e.target.value)} style={{ width:'100%', height:44, padding:'0 13px', border:'1px solid var(--line)', borderRadius:10, fontSize:14, marginBottom:16, background:'#fff', fontFamily:'inherit' }}>
+                <option value="">General enquiry</option>
+                {services.map(s=><option key={s.id} value={s.title}>{s.title}</option>)}
+              </select>
+              <input required placeholder="Your name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} style={{ width:'100%', height:44, padding:'0 13px', border:'1px solid var(--line)', borderRadius:10, fontSize:14, marginBottom:14, fontFamily:'inherit' }}/>
+              <input required placeholder="Phone number" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} style={{ width:'100%', height:44, padding:'0 13px', border:'1px solid var(--line)', borderRadius:10, fontSize:14, marginBottom:14, fontFamily:'inherit' }}/>
+              <textarea placeholder="Tell us about your space or what you need (optional)" value={form.message} onChange={e=>setForm({...form,message:e.target.value})} rows={3} style={{ width:'100%', padding:'12px 13px', border:'1px solid var(--line)', borderRadius:10, fontSize:14, marginBottom:18, fontFamily:'inherit', resize:'vertical' }}/>
+              <button type="submit" disabled={sending} className="btn btn-green" style={{ width:'100%', justifyContent:'center', padding:'14px 0', borderRadius:10, fontSize:14 }}>
+                {sending ? 'Sending…' : 'Send Request'}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Store() {
   const [pg, setPg]         = useState(page)
   const [products, setProducts] = useState([])
   const [promos, setPromos] = useState([])
+  const [services, setServices] = useState([])
   const [cats, setCats]     = useState([])
   const [loading, setLoading] = useState(true)
   const [cart, setCart]     = useState([])
@@ -143,12 +231,14 @@ function Store() {
   }, [])
 
   async function load() {
-    const [{ data: p },{ data: pr }] = await Promise.all([
+    const [{ data: p },{ data: pr },{ data: sv }] = await Promise.all([
       supabase.from('products').select('*').eq('visible',true).order('name'),
       supabase.from('promos').select('*').gte('end_date', new Date().toISOString()),
+      supabase.from('services').select('*').eq('visible',true).order('sort').then(r=>r, ()=>({data:[]})),
     ])
     setProducts(p||[])
     setPromos(pr||[])
+    setServices(sv||[])
     setCats(['All', ...new Set((p||[]).map(x=>x.category).filter(Boolean))])
     setLoading(false)
   }
@@ -240,7 +330,7 @@ function Store() {
             Esterea Home
           </button>
           <div style={{ display:'flex', alignItems:'center', gap:30 }}>
-            {[['Home','home','/'],['Shop','shop','/shop'],['Track','track','/track']].map(([l,p,h])=>(
+            {[['Home','home','/'],['Shop','shop','/shop'],['Services','services','/services'],['Track','track','/track']].map(([l,p,h])=>(
               <button key={p} onClick={()=>go(p,h)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:13, fontWeight:600, color:pg===p?'var(--green)':'var(--ink-2)', transition:'color .15s' }}
                 className="desktop-nav-link">{l}</button>
             ))}
@@ -357,6 +447,32 @@ function Store() {
           }
         </div>
 
+        {/* Services teaser */}
+        {services.length > 0 && (
+          <div style={{ background:'var(--green-bg)', padding:'48px 0' }}>
+            <div style={{ ...S.page }}>
+              <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', marginBottom:8, flexWrap:'wrap', gap:8 }}>
+                <div>
+                  <div style={{ fontSize:11, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--green)', fontWeight:700, marginBottom:8 }}>Beyond the shop</div>
+                  <h2 style={{ fontSize:26, fontWeight:800, letterSpacing:'-.02em' }}>Interior &amp; Décor Services</h2>
+                </div>
+                <button onClick={()=>go('services','/services')} style={{ background:'none', border:'none', cursor:'pointer', fontSize:13, color:'var(--green)', fontWeight:600 }}>See all services →</button>
+              </div>
+              <p style={{ fontSize:14, color:'var(--ink-2)', maxWidth:520, marginBottom:28, lineHeight:1.6 }}>We don't just sell décor — we style your space. From consultations to full room makeovers, our team brings your vision to life.</p>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))', gap:18 }}>
+                {services.slice(0,3).map(s=>(
+                  <div key={s.id} onClick={()=>go('services','/services')} style={{ background:'#fff', borderRadius:'var(--r-md)', padding:'22px', cursor:'pointer', border:'1px solid rgba(30,122,77,.12)', transition:'transform .15s' }}
+                    onMouseEnter={e=>e.currentTarget.style.transform='translateY(-3px)'} onMouseLeave={e=>e.currentTarget.style.transform='none'}>
+                    <div style={{ fontSize:16, fontWeight:700, marginBottom:8 }}>{s.title}</div>
+                    <div className="clip2" style={{ fontSize:13, color:'var(--ink-2)', lineHeight:1.6, marginBottom:12 }}>{s.description}</div>
+                    {s.price_from > 0 && <div style={{ fontSize:13, fontWeight:700, color:'var(--green)' }}>From {ghs(s.price_from)}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Strip */}
         <div style={{ background:'#111', padding:'48px 20px' }}>
           <div style={{ ...S.page, display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:32 }}>
@@ -391,6 +507,11 @@ function Store() {
                 </div>
           }
         </div>
+      )}
+
+      {/* ══════ SERVICES ══════ */}
+      {pg==='services' && (
+        <ServicesPage services={services} go={go} S={S} />
       )}
 
       {/* ══════ DETAIL ══════ */}

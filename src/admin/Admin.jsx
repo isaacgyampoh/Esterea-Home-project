@@ -18,10 +18,13 @@ import Customers from './pages/Customers'
 import Expenses from './pages/Expenses'
 import Reports from './pages/Reports'
 import Staff from './pages/Staff'
+import Services from './pages/Services'
+import Bookings from './pages/Bookings'
 
 const PAGES = {
   dashboard: Dashboard, pos: POS, invoices: Invoices, receipts: Receipts, refunds: Refunds,
   products: Products, promos: Promos, restock: Restock, stock: StockAdjust,
+  services: Services, bookings: Bookings,
   customers: Customers, expenses: Expenses, reports: Reports, staff: Staff,
 }
 
