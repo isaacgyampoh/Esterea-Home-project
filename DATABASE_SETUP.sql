@@ -50,6 +50,15 @@ create table if not exists sales (
   voided boolean default false,
   created_at timestamptz default now()
 );
+alter table sales add column if not exists receipt_no text;
+alter table sales add column if not exists date timestamptz default now();
+alter table sales add column if not exists items jsonb default '[]';
+alter table sales add column if not exists subtotal numeric default 0;
+alter table sales add column if not exists total numeric default 0;
+alter table sales add column if not exists profit numeric default 0;
+alter table sales add column if not exists payment text default 'Cash';
+alter table sales add column if not exists customer_name text;
+alter table sales add column if not exists customer_phone text;
 alter table sales add column if not exists staff_id uuid;
 alter table sales add column if not exists staff_name text;
 alter table sales add column if not exists discount numeric default 0;
