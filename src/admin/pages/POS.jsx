@@ -24,13 +24,22 @@ export default function POS({ session }) {
 
   const list = (products || []).filter(p => !search || p.name.toLowerCase().includes(search.toLowerCase()))
 
-  const add = p => setCart(c => {
-    const ex = c.find(x => x.id === p.id)
-    if (ex) return c.map(x => x.id === p.id ? { ...x, qty: Math.min(x.qty + 1, p.quantity) } : x)
-    return [...c, { id: p.id, name: p.name, price: p.price, cost: p.cost_price || 0, qty: 1, max: p.quantity }]
+  const [variantPick, setVariantPick] = useState(null) // product awaiting variant choice
+
+  const addToCart = (p, variant) => setCart(c => {
+    const lineId = variant ? `${p.id}::${variant.name}` : p.id
+    const max = variant ? (variant.quantity || 0) : p.quantity
+    const ex = c.find(x => x.lineId === lineId)
+    if (ex) return c.map(x => x.lineId === lineId ? { ...x, qty: Math.min(x.qty + 1, x.max) } : x)
+    return [...c, { lineId, id: p.id, variantName: variant?.name || null, name: variant ? `${p.name} — ${variant.name}` : p.name, price: p.price, cost: p.cost_price || 0, qty: 1, max }]
   })
-  const setQty = (id, d) => setCart(c => c.flatMap(x => {
-    if (x.id !== id) return [x]
+  const add = p => {
+    const variants = Array.isArray(p.variants) ? p.variants : []
+    if (variants.length > 0) setVariantPick(p)
+    else addToCart(p)
+  }
+  const setQty = (lineId, d) => setCart(c => c.flatMap(x => {
+    if (x.lineId !== lineId) return [x]
     const q = x.qty + d
     if (q <= 0) return []
     return [{ ...x, qty: Math.min(q, x.max) }]
@@ -46,7 +55,7 @@ export default function POS({ session }) {
     const sale = {
       receipt_no: shortId('POS'),
       date: isoNow(),
-      items: cart.map(x => ({ id: x.id, name: x.name, price: x.price, qty: x.qty })),
+      items: cart.map(x => ({ id: x.id, name: x.name, variant: x.variantName, price: x.price, qty: x.qty })),
       subtotal, discount, total, profit,
       payment, customer_name: customer.trim() || null, customer_phone: phone.trim() || null,
       staff_id: session?.id || null, staff_name: session?.name || 'Admin',
@@ -54,7 +63,26 @@ export default function POS({ session }) {
     }
     const { error } = await supabase.from('sales').insert(sale)
     if (!error) {
-      for (const x of cart) await supabase.from('products').update({ quantity: x.max - x.qty }).eq('id', x.id)
+      // group cart lines by product, decrement variant stock or plain stock
+      const byProduct = {}
+      for (const x of cart) { (byProduct[x.id] ||= []).push(x) }
+      for (const pid of Object.keys(byProduct)) {
+        const lines = byProduct[pid]
+        const prod = products.find(p => p.id === pid)
+        if (!prod) continue
+        const variants = Array.isArray(prod.variants) ? prod.variants : []
+        if (variants.length > 0) {
+          const updated = variants.map(v => {
+            const sold = lines.filter(l => l.variantName === v.name).reduce((a, l) => a + l.qty, 0)
+            return { ...v, quantity: Math.max(0, (v.quantity || 0) - sold) }
+          })
+          const total = updated.reduce((a, v) => a + (v.quantity || 0), 0)
+          await supabase.from('products').update({ variants: updated, quantity: total }).eq('id', pid)
+        } else {
+          const sold = lines.reduce((a, l) => a + l.qty, 0)
+          await supabase.from('products').update({ quantity: Math.max(0, (prod.quantity || 0) - sold) }).eq('id', pid)
+        }
+      }
     }
     setSaving(false)
     if (error) return toast(error.message, 'bad')
@@ -92,14 +120,14 @@ export default function POS({ session }) {
           </div>
           <div className="cart__body">
             {cart.length === 0 ? <div className="cart__empty">Tap a product to add</div> : cart.map(x => (
-              <div key={x.id} className="cart__line">
+              <div key={x.lineId} className="cart__line">
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="cart__name">{x.name}</div>
                   <div className="cart__price">{ghs(x.price)}</div>
                 </div>
-                <button className="cart__qbtn" onClick={() => setQty(x.id, -1)}>−</button>
+                <button className="cart__qbtn" onClick={() => setQty(x.lineId, -1)}>−</button>
                 <span className="cart__qnum">{x.qty}</span>
-                <button className="cart__qbtn" onClick={() => setQty(x.id, +1)}>+</button>
+                <button className="cart__qbtn" onClick={() => setQty(x.lineId, +1)}>+</button>
               </div>
             ))}
           </div>
@@ -124,6 +152,30 @@ export default function POS({ session }) {
           </div>
         </aside>
       </div>
+
+      {variantPick && (
+        <Modal title={`Choose ${variantPick.variant_label || 'option'}`} onClose={() => setVariantPick(null)} size="sm"
+          footer={<Button variant="line" onClick={() => setVariantPick(null)}>Cancel</Button>}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>{variantPick.name}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(90px,1fr))', gap: 10 }}>
+            {(variantPick.variants || []).map((v, i) => {
+              const out = (v.quantity || 0) <= 0
+              return (
+                <button key={i} disabled={out} onClick={() => { addToCart(variantPick, v); setVariantPick(null) }}
+                  style={{ border: '1px solid var(--line)', borderRadius: 10, overflow: 'hidden', cursor: out ? 'not-allowed' : 'pointer', background: '#fff', opacity: out ? .45 : 1, padding: 0, fontFamily: 'inherit' }}>
+                  <div style={{ width: '100%', aspectRatio: '1/1', background: 'var(--line-2)' }}>
+                    {v.image ? <img src={cdn(v.image, 200)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ display: 'grid', placeItems: 'center', height: '100%', fontSize: 11, color: 'var(--ink-3)' }}>{v.name}</div>}
+                  </div>
+                  <div style={{ padding: '6px 4px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600 }}>{v.name}</div>
+                    <div style={{ fontSize: 10, color: out ? 'var(--bad)' : 'var(--ink-3)' }}>{out ? 'Out' : `${v.quantity} left`}</div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </Modal>
+      )}
 
       {lastSale && (
         <Modal title="Sale Complete" onClose={() => setLastSale(null)} size="sm"

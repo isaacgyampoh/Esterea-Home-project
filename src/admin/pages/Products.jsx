@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { ghs, uniq } from '../lib/format'
-import { cdn } from '../lib/cloudinary'
+import { cdn, uploadImage } from '../lib/cloudinary'
 import { DEFAULT_CATEGORIES } from '../lib/categories'
 import { useAsync, toast } from '../lib/hooks'
 import { Button, Input, NumberInput, TextArea, Combo, Toggle, SearchBar, Tabs, Spinner, Empty } from '../ui'
@@ -9,7 +9,7 @@ import { PageHeader, Panel, Table } from '../ui/Layout'
 import Modal from '../ui/Modal'
 import ImageUpload from '../ui/ImageUpload'
 
-const BLANK = { name: '', category: '', price: 0, cost_price: 0, quantity: 0, image: '', description: '', visible: true, wholesale_price: 0, wholesale_min_qty: 0 }
+const BLANK = { name: '', category: '', price: 0, cost_price: 0, quantity: 0, image: '', description: '', visible: true, wholesale_price: 0, wholesale_min_qty: 0, variant_label: '', variants: [] }
 const stockClass = q => q === 0 ? 'crit' : q <= 3 ? 'crit' : q <= 10 ? 'low' : 'ok'
 const stockLabel = q => q === 0 ? 'Out of Stock' : q <= 3 ? 'Critical' : q <= 10 ? 'Low Stock' : 'In Stock'
 
@@ -37,6 +37,11 @@ export default function Products() {
   async function save() {
     setSaving(true)
     const { id, ...data } = editing
+    // if variable, total stock = sum of variant stock; clean empty variants
+    if (data.variants?.length > 0) {
+      data.variants = data.variants.filter(v => v.name?.trim())
+      data.quantity = data.variants.reduce((a, v) => a + Number(v.quantity || 0), 0)
+    }
     const res = id
       ? await supabase.from('products').update(data).eq('id', id)
       : await supabase.from('products').insert(data)
@@ -126,12 +131,75 @@ export default function Products() {
             <div className="formgrid-3">
               <NumberInput label="Wholesale Price" value={editing.wholesale_price} onChange={v => setEditing({ ...editing, wholesale_price: v })} />
               <NumberInput label="Min Qty" step="1" value={editing.wholesale_min_qty} onChange={v => setEditing({ ...editing, wholesale_min_qty: v })} />
-              <NumberInput label="Stock" step="1" value={editing.quantity} onChange={v => setEditing({ ...editing, quantity: v })} />
+              <NumberInput label="Stock" step="1" value={editing.quantity} onChange={v => setEditing({ ...editing, quantity: v })} disabled={editing.variants?.length > 0} />
             </div>
+            {editing.variants?.length > 0 && <div style={{ fontSize: 11, color: 'var(--ink-3)', margin: '-8px 0 14px' }}>Stock is managed per variant below.</div>}
+
+            <VariantsEditor editing={editing} setEditing={setEditing} />
+
             <Toggle on={editing.visible} onToggle={() => setEditing({ ...editing, visible: !editing.visible })} label="Visible in Store" sub="Customers can see and buy this product" />
           </div>
         </Modal>
       )}
     </div>
+  )
+}
+
+/* ─── Variants editor (Color/Size/etc — each with own image & stock) ─── */
+function VariantsEditor({ editing, setEditing }) {
+  const variants = editing.variants || []
+  const setVariants = v => setEditing({ ...editing, variants: v })
+  const add = () => setVariants([...variants, { name: '', image: '', quantity: 0 }])
+  const update = (i, patch) => setVariants(variants.map((v, idx) => idx === i ? { ...v, ...patch } : v))
+  const remove = i => setVariants(variants.filter((_, idx) => idx !== i))
+
+  return (
+    <div style={{ border: '1px solid var(--line)', borderRadius: 12, padding: 16, marginBottom: 15 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: variants.length ? 12 : 0 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>Variants</div>
+          <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>For products with options like color or size</div>
+        </div>
+        <Button variant="line" size="sm" icon="plus" onClick={add}>Add Variant</Button>
+      </div>
+
+      {variants.length > 0 && (
+        <>
+          <Input label="Option name" value={editing.variant_label} onChange={e => setEditing({ ...editing, variant_label: e.target.value })} placeholder="e.g. Color, Size, Material" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {variants.map((v, i) => (
+              <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'var(--line-2)', borderRadius: 10, padding: 10 }}>
+                <VariantImage value={v.image} onChange={img => update(i, { image: img })} />
+                <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 90px', gap: 8 }}>
+                  <input className="input" value={v.name} onChange={e => update(i, { name: e.target.value })} placeholder={`${editing.variant_label || 'Variant'} name`} style={{ height: 36 }} />
+                  <input className="input input--num" type="number" min="0" value={v.quantity === 0 ? '' : v.quantity} onChange={e => update(i, { quantity: Number(e.target.value) || 0 })} placeholder="Stock" style={{ height: 36 }} />
+                </div>
+                <button type="button" onClick={() => remove(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--bad)', padding: 6, flexShrink: 0 }}>✕</button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+/* compact 48px image picker for a variant */
+function VariantImage({ value, onChange }) {
+  const [busy, setBusy] = useState(false)
+  const ref = useRef()
+  async function handle(file) {
+    if (!file) return
+    setBusy(true)
+    try { onChange(await uploadImage(file)) } catch (e) { toast(e.message, 'bad') }
+    setBusy(false)
+  }
+  return (
+    <>
+      <button type="button" onClick={() => !busy && ref.current?.click()} style={{ width: 48, height: 48, borderRadius: 8, background: '#fff', border: '1px solid var(--line)', overflow: 'hidden', flexShrink: 0, cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 0 }}>
+        {busy ? <span style={{ fontSize: 9 }}>…</span> : value ? <img src={cdn(value, 100)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 18, color: 'var(--ink-3)' }}>+</span>}
+      </button>
+      <input ref={ref} type="file" accept="image/*" hidden onChange={e => { handle(e.target.files[0]); e.target.value = '' }} />
+    </>
   )
 }

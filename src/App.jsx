@@ -47,7 +47,12 @@ const Ico = {
 /* ─── PRODUCT CARD ─── */
 function Card({ p, promo, onOpen, onAdd }) {
   const [done, setDone] = useState(false)
-  const add = e => { e.stopPropagation(); onAdd(); setDone(true); setTimeout(()=>setDone(false),1400) }
+  const isVariable = Array.isArray(p.variants) && p.variants.length > 0
+  const add = e => {
+    e.stopPropagation()
+    if (isVariable) { onOpen(); return }   // must pick an option on the detail page
+    onAdd(); setDone(true); setTimeout(()=>setDone(false),1400)
+  }
   const price = promo ? promo.price : p.price
   const hasWholesale = p.wholesale_price > 0 && p.wholesale_min_qty > 0
 
@@ -59,6 +64,7 @@ function Card({ p, promo, onOpen, onAdd }) {
           : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', color:'#ddd', fontSize:34, fontWeight:700 }}>E</div>
         }
         {promo && <span style={{ position:'absolute', top:10, left:10, background:'var(--green)', color:'#fff', fontSize:9, letterSpacing:'.06em', fontWeight:700, padding:'3px 9px', borderRadius:20, textTransform:'uppercase' }}>Sale</span>}
+        {Array.isArray(p.variants) && p.variants.length>0 && <span style={{ position:'absolute', top:10, right:10, background:'rgba(17,17,17,.8)', color:'#fff', fontSize:9, fontWeight:700, padding:'3px 9px', borderRadius:20 }}>{p.variants.length} options</span>}
       </div>
       <div style={{ marginTop:12 }}>
         {p.category && <div style={{ fontSize:10, letterSpacing:'.1em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:5 }}>{p.category}</div>}
@@ -69,7 +75,7 @@ function Card({ p, promo, onOpen, onAdd }) {
             {promo && <span style={{ fontSize:11, color:'var(--ink-3)', textDecoration:'line-through' }}>{ghs(p.price)}</span>}
           </div>
           <button onClick={add} className="btn" style={{ padding:'7px 16px', borderRadius:8, fontSize:12, background: done ? 'var(--ink)' : 'var(--green)', color:'#fff', flexShrink:0 }}>
-            {done ? '✓ Added' : 'Add'}
+            {done ? '✓ Added' : isVariable ? 'Options' : 'Add'}
           </button>
         </div>
         {hasWholesale && <div style={{ fontSize:11, color:'var(--green)', marginTop:7, fontWeight:500 }}>Buy {p.wholesale_min_qty}+ for {ghs(p.wholesale_price)} each</div>}
@@ -183,6 +189,74 @@ function ServicesPage({ services, go, S }) {
   )
 }
 
+function DetailPage({ detail, go, S, promo, addCart }) {
+  const variants = Array.isArray(detail.variants) ? detail.variants : []
+  const hasVariants = variants.length > 0
+  const [sel, setSel] = useState(null) // selected variant object
+  // reset selection when product changes
+  useEffect(()=>{ setSel(null) }, [detail.id])
+
+  const heroImg = sel?.image || detail.image
+  const pr = promo(detail.id)
+  const price = pr ? pr.price : detail.price
+  const soldOut = hasVariants ? variants.every(v=>(v.quantity||0)<=0) : (detail.quantity||0)<=0
+  const variantOut = sel ? (sel.quantity||0)<=0 : false
+  const canAdd = hasVariants ? (sel && !variantOut) : !soldOut
+
+  return (
+    <div style={{ ...S.page, padding:'32px 20px 60px' }}>
+      <button onClick={()=>go('shop','/shop')} style={{ background:'none', border:'none', cursor:'pointer', display:'flex', alignItems:'center', gap:6, color:'#888', fontSize:12, marginBottom:28 }}>
+        {Ico.back} Back
+      </button>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:48, alignItems:'start' }}>
+        <div style={{ aspectRatio:'1/1', background:'var(--cream)', borderRadius:'var(--r-lg)', overflow:'hidden' }}>
+          {heroImg ? <img src={img(heroImg,900)} alt={detail.name} style={{ width:'100%', height:'100%', objectFit:'cover', transition:'opacity .2s' }} /> : null}
+        </div>
+        <div className="anim-up">
+          {detail.category && <div style={{ fontSize:10, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:10 }}>{detail.category}</div>}
+          <h1 style={{ fontSize:28, fontWeight:800, lineHeight:1.15, marginBottom:16, letterSpacing:'-.02em' }}>{detail.name}</h1>
+          {detail.description && <p style={{ fontSize:14, color:'var(--ink-2)', lineHeight:1.7, marginBottom:20 }}>{detail.description}</p>}
+          <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:8 }}>
+            <span style={{ fontSize:26, fontWeight:700 }}>{ghs(price)}</span>
+            {pr && <span style={{ fontSize:15, color:'var(--ink-3)', textDecoration:'line-through' }}>{ghs(detail.price)}</span>}
+          </div>
+          {detail.wholesale_price>0 && detail.wholesale_min_qty>0 && <div style={{ fontSize:13, color:'var(--green)', fontWeight:600, marginBottom:20, background:'var(--green-bg)', padding:'8px 12px', borderRadius:8, display:'inline-block' }}>Buy {detail.wholesale_min_qty}+ for {ghs(detail.wholesale_price)} each</div>}
+
+          {/* Variant picker */}
+          {hasVariants && (
+            <div style={{ margin:'18px 0 26px' }}>
+              <div style={{ fontSize:13, fontWeight:600, marginBottom:10 }}>{detail.variant_label || 'Options'}{sel && <span style={{ color:'var(--ink-3)', fontWeight:400 }}> — {sel.name}</span>}</div>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
+                {variants.map((v,i)=>{
+                  const out=(v.quantity||0)<=0
+                  const active=sel?.name===v.name
+                  return (
+                    <button key={i} onClick={()=>!out&&setSel(v)} disabled={out} title={v.name}
+                      style={{ position:'relative', width:64, padding:0, border:`2px solid ${active?'var(--green)':'var(--line)'}`, borderRadius:10, overflow:'hidden', cursor:out?'not-allowed':'pointer', background:'#fff', opacity:out?.45:1 }}>
+                      <div style={{ width:'100%', aspectRatio:'1/1', background:'var(--cream)' }}>
+                        {v.image ? <img src={img(v.image,160)} alt={v.name} style={{ width:'100%', height:'100%', objectFit:'cover' }}/> : <div style={{ display:'grid', placeItems:'center', height:'100%', fontSize:10, color:'var(--ink-3)', padding:4, textAlign:'center' }}>{v.name}</div>}
+                      </div>
+                      {out && <div style={{ position:'absolute', inset:0, display:'grid', placeItems:'center', fontSize:9, fontWeight:700, color:'var(--ink-2)', background:'rgba(255,255,255,.4)' }}>OUT</div>}
+                    </button>
+                  )
+                })}
+              </div>
+              <div style={{ fontSize:11, color:'var(--ink-3)', marginTop:8 }}>{variants.map(v=>v.name).filter(Boolean).join(' · ')}</div>
+            </div>
+          )}
+
+          <button onClick={()=>canAdd&&addCart(detail, sel)} disabled={!canAdd} className="btn btn-green" style={{ width:'100%', justifyContent:'center', padding:'15px 0', borderRadius:10, fontSize:13.5, marginBottom:12, opacity:canAdd?1:.5, cursor:canAdd?'pointer':'not-allowed' }}>
+            {soldOut ? 'Sold Out' : hasVariants && !sel ? `Select ${detail.variant_label||'an option'}` : variantOut ? 'Out of Stock' : 'Add to Cart'}
+          </button>
+          <a href={`https://wa.me/${WA}?text=Hi, I'm interested in: ${detail.name}${sel?' ('+sel.name+')':''}`} target="_blank" rel="noreferrer" className="btn" style={{ width:'100%', justifyContent:'center', padding:'15px 0', borderRadius:10, fontSize:13.5, textDecoration:'none', background:'#fff', border:'1.5px solid var(--line)', color:'var(--ink)' }}>
+            {Ico.wa} Enquire on WhatsApp
+          </a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Store() {
   const [pg, setPg]         = useState(page)
   const [products, setProducts] = useState([])
@@ -263,10 +337,13 @@ function Store() {
     return true
   })
 
-  const addCart = useCallback(p=>{
+  const addCart = useCallback((p, variant)=>{
     const pr=promo(p.id); const price=pr?pr.price:p.price
-    setCart(c=>{ const e=c.find(x=>x.id===p.id); if(e) return c.map(x=>x.id===p.id?{...x,qty:x.qty+1}:x); return [...c,{id:p.id,name:p.name,price,img:p.image,qty:1}] })
-    toast_(p.name.slice(0,30)+' added')
+    const lineId = variant ? `${p.id}::${variant.name}` : p.id
+    const label = variant ? `${p.name} — ${variant.name}` : p.name
+    const image = variant?.image || p.image
+    setCart(c=>{ const e=c.find(x=>x.id===lineId); if(e) return c.map(x=>x.id===lineId?{...x,qty:x.qty+1}:x); return [...c,{id:lineId,name:label,price,img:image,qty:1}] })
+    toast_(label.slice(0,34)+' added')
   },[promos])
   const updQty = (id,d)=>setCart(c=>c.map(x=>x.id===id?{...x,qty:Math.max(1,x.qty+d)}:x))
   const remCart = id=>setCart(c=>c.filter(x=>x.id!==id))
@@ -516,33 +593,7 @@ function Store() {
 
       {/* ══════ DETAIL ══════ */}
       {pg==='detail' && detail && (
-        <div style={{ ...S.page, padding:'32px 20px 60px' }}>
-          <button onClick={()=>go('shop','/shop')} style={{ background:'none', border:'none', cursor:'pointer', display:'flex', alignItems:'center', gap:6, color:'#888', fontSize:12, marginBottom:28 }}>
-            {Ico.back} Back
-          </button>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:48, alignItems:'start' }}>
-            <div style={{ aspectRatio:'1/1', background:'var(--cream)', borderRadius:'var(--r-lg)', overflow:'hidden' }}>
-              {detail.image ? <img src={img(detail.image,900)} alt={detail.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : null}
-            </div>
-            <div className="anim-up">
-              {detail.category && <div style={{ fontSize:10, letterSpacing:'.12em', textTransform:'uppercase', color:'var(--ink-3)', marginBottom:10 }}>{detail.category}</div>}
-              <h1 style={{ fontSize:28, fontWeight:800, lineHeight:1.15, marginBottom:16, letterSpacing:'-.02em' }}>{detail.name}</h1>
-              {detail.description && <p style={{ fontSize:14, color:'var(--ink-2)', lineHeight:1.7, marginBottom:20 }}>{detail.description}</p>}
-              <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:8 }}>
-                <span style={{ fontSize:26, fontWeight:700 }}>{ghs(promo(detail.id)?promo(detail.id).price:detail.price)}</span>
-                {promo(detail.id) && <span style={{ fontSize:15, color:'var(--ink-3)', textDecoration:'line-through' }}>{ghs(detail.price)}</span>}
-              </div>
-              {detail.wholesale_price>0 && detail.wholesale_min_qty>0 && <div style={{ fontSize:13, color:'var(--green)', fontWeight:600, marginBottom:24, background:'var(--green-bg)', padding:'8px 12px', borderRadius:8, display:'inline-block' }}>Buy {detail.wholesale_min_qty}+ for {ghs(detail.wholesale_price)} each</div>}
-              <div style={{ marginBottom:28 }} />
-              <button onClick={()=>addCart(detail)} className="btn btn-green" style={{ width:'100%', justifyContent:'center', padding:'15px 0', borderRadius:10, fontSize:13.5, marginBottom:12 }}>
-                Add to Cart
-              </button>
-              <a href={`https://wa.me/${WA}?text=Hi, I'm interested in: ${detail.name}`} target="_blank" rel="noreferrer" className="btn" style={{ width:'100%', justifyContent:'center', padding:'15px 0', borderRadius:10, fontSize:13.5, textDecoration:'none', background:'#fff', border:'1.5px solid var(--line)', color:'var(--ink)' }}>
-                {Ico.wa} Enquire on WhatsApp
-              </a>
-            </div>
-          </div>
-        </div>
+        <DetailPage detail={detail} go={go} S={S} promo={promo} addCart={addCart} />
       )}
 
       {/* ══════ CART ══════ */}
