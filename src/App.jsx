@@ -362,7 +362,10 @@ function Store() {
     setSubmitting(true)
     try {
       await loadPaystack()
-      const {data:no}=await supabase.rpc('generate_wa_order_no').catch(()=>({data:null}))
+      // supabase builders are thenables with no .catch — calling it throws
+      // TypeError before the insert and kills checkout. Guard with try/catch.
+      let no = null
+      try { ({ data: no } = await supabase.rpc('generate_wa_order_no')) } catch { no = null }
       const orderNo = no||`EST-${Date.now().toString(36).toUpperCase()}`
       const items = cart.map(c=>({name:c.name,qty:c.qty,price:c.price}))
       const ref   = `PAY-${orderNo}-${Date.now()}`
