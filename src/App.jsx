@@ -19,14 +19,21 @@ function page() {
   return map[h] || 'home'
 }
 
+let paystackLoad = null
 function loadPaystack() {
-  return new Promise(res => {
-    if (window.PaystackPop) { res(); return }
+  if (window.PaystackPop) return Promise.resolve()
+  if (paystackLoad) return paystackLoad
+  paystackLoad = new Promise((res, rej) => {
     const s = document.createElement('script')
     s.src = 'https://js.paystack.co/v2/inline.js'
-    s.onload = res
+    s.async = true
+    s.onload = () => window.PaystackPop
+      ? res()
+      : rej(new Error('Paystack loaded but PaystackPop is missing.'))
+    s.onerror = () => { paystackLoad = null; rej(new Error('Could not reach Paystack — check your connection or ad-blocker.')) }
     document.head.appendChild(s)
   })
+  return paystackLoad
 }
 
 /* ─── ICONS (minimal, hand-drawn feel) ─── */
@@ -359,16 +366,23 @@ function Store() {
       const orderNo = no||`EST-${Date.now().toString(36).toUpperCase()}`
       const items = cart.map(c=>({name:c.name,qty:c.qty,price:c.price}))
       const ref   = `PAY-${orderNo}-${Date.now()}`
-      await supabase.from('whatsapp_orders').insert({ order_no:orderNo, date:new Date().toISOString(), customer_name:name.trim(), customer_phone:fmtPh(phone.trim()), items, subtotal:ct, delivery_fee:0, total:ct, address:fulfill==='pickup'?'PICKUP':addr.trim(), notes:notes.trim(), status:'Pending', paystack_ref:ref, created_at:new Date().toISOString() })
-      window.PaystackPop.setup({ key:PAYSTACK_KEY, email:fmtPh(phone.trim())+'@estereahome.com', amount:Math.round(ct*100), currency:'GHS', ref, channels:['mobile_money'], metadata:{order_no:orderNo},
-        callback: async resp=>{
-          await supabase.from('whatsapp_orders').update({status:'Paid',paystack_ref:resp.reference,paid_at:new Date().toISOString()}).eq('order_no',orderNo)
-          setOrderResult({orderNo,total:ct,fulfill}); setCart([]); setName(''); setPhone(''); setAddr(''); setNotes('')
+      const total = ct
+      const {error:insErr} = await supabase.from('whatsapp_orders').insert({ order_no:orderNo, date:new Date().toISOString(), customer_name:name.trim(), customer_phone:fmtPh(phone.trim()), items, subtotal:total, delivery_fee:0, total, address:fulfill==='pickup'?'PICKUP':addr.trim(), notes:notes.trim(), status:'Pending', paystack_ref:ref, created_at:new Date().toISOString() })
+      // Never open Paystack on a failed insert — charging with no saved order is worse than not charging.
+      if (insErr) throw new Error(`Could not save your order: ${insErr.message}`)
+      new window.PaystackPop().newTransaction({
+        key:PAYSTACK_KEY, email:fmtPh(phone.trim())+'@estereahome.com', amount:Math.round(total*100),
+        currency:'GHS', reference:ref, channels:['mobile_money'], metadata:{order_no:orderNo},
+        onSuccess: async resp=>{
+          const {error:updErr} = await supabase.from('whatsapp_orders').update({status:'Paid',paystack_ref:resp.reference,paid_at:new Date().toISOString()}).eq('order_no',orderNo)
+          if (updErr) console.error('[checkout] paid but order not updated', orderNo, updErr)
+          setOrderResult({orderNo,total,fulfill}); setCart([]); setName(''); setPhone(''); setAddr(''); setNotes('')
           go('success','/success'); setSubmitting(false)
         },
-        onClose:()=>setSubmitting(false),
-      }).openIframe()
-    } catch(e){ console.error(e); setSubmitting(false); toast_('Something went wrong. Try again.') }
+        onCancel:()=>setSubmitting(false),
+        onError: err=>{ console.error('[checkout] paystack', err); setSubmitting(false); toast_(String(err?.message||'Payment could not start. Try again.').slice(0,90)) },
+      })
+    } catch(e){ console.error('[checkout]', e); setSubmitting(false); toast_(String(e?.message||'Something went wrong. Try again.').slice(0,90)) }
   }
 
   async function track() {
