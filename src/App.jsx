@@ -109,85 +109,222 @@ export default function App() {
 }
 
 /* ─── STORE ─── */
-function ServicesPage({ services, go, S }) {
-  const [booking, setBooking] = useState(null) // selected service title or '' for general
-  const [form, setForm] = useState({ name:'', phone:'', message:'' })
-  const [sending, setSending] = useState(false)
-  const [done, setDone] = useState(false)
+const SVC_STEPS = [
+  ['Enquire', 'Choose a service, or send a general enquiry if you are still deciding.'],
+  ['We plan', 'We talk through your space, timeline and budget, then send a plan and a quote.'],
+  ['We style', 'Our team sources, arranges and sets everything up — and packs down after events.'],
+]
+
+const Arr = <svg className="arrow" width="14" height="10" viewBox="0 0 14 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M1 5h11M8.5 1.5 12 5l-3.5 3.5"/></svg>
+
+const SVC_ICONS = [
+  <svg key="a" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></svg>,
+  <svg key="b" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 11V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M2 12a2 2 0 0 1 4 0v3h12v-3a2 2 0 0 1 4 0v6H2z"/></svg>,
+  <svg key="c" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>,
+  <svg key="d" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>,
+  <svg key="e" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2 7 9h10zM12 8l-6 8h12zM12 14l-7 7h14z"/></svg>,
+]
+
+function ServicesPage({ services, products = [], go, S }) {
+  const [booking, setBooking]       = useState(null) // selected service title, or null for general
+  const [form, setForm]             = useState({ name:'', phone:'', message:'' })
+  const [sending, setSending]       = useState(false)
+  const [done, setDone]             = useState(false)
+  const [saveFailed, setSaveFailed] = useState(false)
+  const [waUrl, setWaUrl]           = useState('')
+  const [expanded, setExpanded]     = useState(() => new Set())
+
+  const prices   = services.map(s=>Number(s.price_from)||0).filter(n=>n>0)
+  const minPrice = prices.length ? Math.min(...prices) : 0
+  // Services have no photos yet, so borrow décor shots from the catalogue.
+  // Rugs are photographed on warehouse racks, so rank styled room shots first
+  // and leave rack shots as the last resort.
+  // Ranked by how the shots actually read at hero crop: styled room scenes
+  // first, then anything else, with warehouse-rack and watermarked supplier
+  // catalogue shots last.
+  const PREF     = ['duvet','lighting','pillow','blanket']
+  const RACK     = /rug|bed sheet/i
+  const rank     = p => {
+    const c = (p.category || '').toLowerCase()
+    if (RACK.test(c)) return 99
+    const i = PREF.findIndex(k => c.includes(k))
+    return i === -1 ? 50 : i
+  }
+  const pool     = products.filter(p=>p.image)
+  const shots    = pool.slice().sort((a,b)=>rank(a)-rank(b)).map(p=>p.image)
+  const heroShot = services.find(s=>s.image)?.image || shots[0] || ''
+  const tileShot = shots[1] || shots[0] || ''
+
+  const toggle = id => setExpanded(prev=>{ const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const pick   = title => { setBooking(title); setDone(false); document.getElementById('book')?.scrollIntoView({ behavior:'smooth' }) }
 
   async function submit(e) {
     e.preventDefault()
     if (!form.name.trim() || !form.phone.trim()) return
     setSending(true)
     const record = { service_title: booking || 'General enquiry', name: form.name.trim(), phone: form.phone.trim(), message: form.message.trim(), status:'New' }
-    try { await supabase.from('service_bookings').insert(record) } catch {}
-    setSending(false)
-    setDone(true)
-    // open WhatsApp with prefilled message
-    const text = `Hi Esterea Home! I'd like to book: ${record.service_title}%0AName: ${record.name}%0APhone: ${record.phone}${record.message ? '%0A'+encodeURIComponent(record.message) : ''}`
-    window.open(`https://wa.me/${WA}?text=${text}`, '_blank')
+    let failed = false
+    try {
+      const { error } = await supabase.from('service_bookings').insert(record)
+      if (error) { failed = true; console.error('[services] booking not saved', error) }
+    } catch (err) { failed = true; console.error('[services] booking not saved', err) }
+    const url = `https://wa.me/${WA}?text=${encodeURIComponent(`Hi Esterea Home! I'd like to book: ${record.service_title}\nName: ${record.name}\nPhone: ${record.phone}${record.message ? '\n'+record.message : ''}`)}`
+    setWaUrl(url); setSaveFailed(failed); setSending(false); setDone(true)
+    // Popup blockers reject window.open once an await has spent the click
+    // gesture, so the success state renders this link as a button too.
+    window.open(url, '_blank')
   }
 
   return (
-    <div>
-      {/* hero */}
-      <div style={{ background:'linear-gradient(135deg,#0f2419,#1a1a1a)', padding:'64px 0', color:'#fff' }}>
-        <div style={{ ...S.page }}>
-          <div style={{ fontSize:11, letterSpacing:'.14em', textTransform:'uppercase', color:'#5fd397', fontWeight:700, marginBottom:14 }}>Interior & Décor Services</div>
-          <h1 style={{ fontSize:'clamp(30px,5vw,48px)', fontWeight:800, letterSpacing:'-.03em', lineHeight:1.1, marginBottom:16, maxWidth:600 }}>We style spaces, not just sell décor.</h1>
-          <p style={{ fontSize:15, color:'rgba(255,255,255,.75)', maxWidth:480, lineHeight:1.6, marginBottom:26 }}>From a quick styling consultation to a full room makeover, our team designs and sets up beautiful spaces across Ghana.</p>
-          <a href="#book" style={{ display:'inline-flex', padding:'13px 28px', borderRadius:30, background:'#fff', color:'#111', fontSize:13, fontWeight:700, textDecoration:'none' }}>Book a Service</a>
+    <div style={{ background:'var(--sand)', paddingBottom:4 }}>
+      {/* ── hero ── */}
+      <div className="svc-wrap" style={{ paddingTop:16 }}>
+        <div className="svc-hero2">
+          <div className="svc-hero2__copy">
+            <div className="svc-badge"><span className="svc-dot"/>Interior &amp; Décor Services</div>
+            <h1 className="svc-h" style={{ fontSize:'clamp(32px,4.6vw,54px)', margin:'22px 0 18px' }}>
+              We style spaces,<br/>not just sell <span style={{ color:'var(--lime)' }}>décor</span>.
+            </h1>
+            <p style={{ fontSize:15, color:'rgba(255,255,255,.7)', lineHeight:1.75, maxWidth:'44ch', marginBottom:30 }}>
+              From a single styling consultation to a full room makeover, our team designs and sets up beautiful spaces across Ghana.
+            </p>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:11 }}>
+              <a href="#book" className="svc-pill svc-pill--lime">Make an enquiry<span className="svc-pill__ic">{Arr}</span></a>
+              <a href={`https://wa.me/${WA}`} target="_blank" rel="noreferrer" className="svc-pill svc-pill--ghost">WhatsApp<span className="svc-pill__ic">{Ico.wa}</span></a>
+            </div>
+          </div>
+          <div className="svc-hero2__art">
+            {heroShot && <img src={img(heroShot,1000)} alt="" />}
+          </div>
         </div>
       </div>
 
-      {/* services list */}
-      <div style={{ ...S.page, padding:'48px 24px' }}>
-        <h2 style={{ fontSize:22, fontWeight:800, letterSpacing:'-.02em', marginBottom:24 }}>What we offer</h2>
+      {/* ── section header ── */}
+      <div className="svc-wrap" style={{ padding:'clamp(48px,7vw,84px) 16px clamp(22px,3vw,32px)' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:18, alignItems:'end' }}>
+          <div>
+            <div className="svc-eye" style={{ color:'var(--green)', marginBottom:14 }}><span className="svc-dot"/>What we offer</div>
+            <h2 className="svc-h" style={{ fontSize:'clamp(26px,3.6vw,40px)', maxWidth:'18ch' }}>Considered work, room by room.</h2>
+          </div>
+          <p style={{ fontSize:14, color:'var(--ink-2)', lineHeight:1.78, maxWidth:'52ch' }}>
+            Every service starts with a conversation — no fixed packages unless you want one. Tell us the space, the timeline and the budget, and we build around it.
+          </p>
+        </div>
+      </div>
+
+      {/* ── service cards ── */}
+      <div className="svc-wrap" style={{ paddingBottom:'clamp(42px,6vw,64px)' }}>
         {services.length === 0 ? (
-          <div style={{ textAlign:'center', padding:'40px', color:'var(--ink-3)' }}>Services coming soon. <a href={`https://wa.me/${WA}`} style={{ color:'var(--green)' }}>Message us</a> in the meantime.</div>
+          <div className="svc-card2 is-white" style={{ textAlign:'center', padding:'52px 24px', color:'var(--ink-3)' }}>
+            Services coming soon. <a href={`https://wa.me/${WA}`} style={{ color:'var(--green)', fontWeight:700 }}>Message us</a> in the meantime.
+          </div>
         ) : (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:20 }}>
-            {services.map(s=>(
-              <div key={s.id} style={{ border:'1px solid var(--line)', borderRadius:'var(--r-md)', overflow:'hidden', display:'flex', flexDirection:'column' }}>
-                {s.image && <div style={{ height:160, background:'var(--cream)' }}><img src={img(s.image,600)} alt={s.title} style={{ width:'100%', height:'100%', objectFit:'cover' }}/></div>}
-                <div style={{ padding:'20px', display:'flex', flexDirection:'column', flex:1 }}>
-                  <div style={{ fontSize:17, fontWeight:700, marginBottom:8 }}>{s.title}</div>
-                  <div style={{ fontSize:13.5, color:'var(--ink-2)', lineHeight:1.6, marginBottom:16, flex:1 }}>{s.description}</div>
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
-                    {s.price_from > 0 ? <span style={{ fontSize:14, fontWeight:700, color:'var(--green)' }}>From {ghs(s.price_from)}</span> : <span/>}
-                    <button onClick={()=>{ setBooking(s.title); setDone(false); document.getElementById('book')?.scrollIntoView({behavior:'smooth'}) }} className="btn btn-green" style={{ padding:'9px 18px', borderRadius:8, fontSize:12.5 }}>Book</button>
+          <div className="svc-grid2">
+            {services.map((s,i)=>{
+              const fill = ['is-white','is-lime','is-dark'][i % 3]
+              const long = (s.description||'').length > 150
+              const open = expanded.has(s.id)
+              return (
+                <div key={s.id} className={`svc-card2 ${fill}`}>
+                  {s.image && <div className="svc-card2__img"><img src={img(s.image,700)} alt={s.title}/></div>}
+                  <div className="svc-ico">{SVC_ICONS[i % SVC_ICONS.length]}</div>
+                  <div className="svc-card2__t">{s.title}</div>
+                  <p className={`svc-card2__d${open || !long ? '' : ' svc-clamp'}`}>{s.description}</p>
+                  {long && <button className="svc-more2" onClick={()=>toggle(s.id)}>{open ? 'Show less' : 'Read more'}</button>}
+                  <div style={{ flex:1, minHeight:6 }} />
+                  <div className="svc-card2__f">
+                    <span className="svc-price2">{s.price_from > 0 ? `From ${ghs(s.price_from)}` : 'On request'}</span>
+                    <button className="svc-go" onClick={()=>pick(s.title)}>Enquire {Arr}</button>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
 
-      {/* booking form */}
-      <div id="book" style={{ background:'var(--cream)', padding:'56px 0' }}>
-        <div style={{ ...S.page, maxWidth:560 }}>
-          <h2 style={{ fontSize:24, fontWeight:800, letterSpacing:'-.02em', marginBottom:6, textAlign:'center' }}>Request a Service</h2>
-          <p style={{ fontSize:13.5, color:'var(--ink-2)', textAlign:'center', marginBottom:28 }}>Tell us what you need. We'll save your request and continue on WhatsApp.</p>
+      {/* ── bento: facts + process ── */}
+      <div className="svc-wrap" style={{ paddingBottom:'clamp(52px,7vw,84px)' }}>
+        <div className="svc-bento">
+          <div className="svc-tile svc-tile--lime">
+            <div className="svc-tile__n">{String(services.length).padStart(2,'0')}</div>
+            <div className="svc-tile__l">{services.length === 1 ? 'Service offered' : 'Services offered'}</div>
+          </div>
+          {tileShot && <div className="svc-tile svc-tile--img"><img src={img(tileShot,600)} alt=""/></div>}
+          {minPrice > 0 && (
+            <div className="svc-tile svc-tile--dark">
+              <div className="svc-tile__n">{ghs(minPrice)}</div>
+              <div className="svc-tile__l">Starting from</div>
+            </div>
+          )}
+          <div className="svc-tile svc-tile--line" style={{ minWidth:0, justifyContent:'flex-start' }}>
+            <div className="svc-eye" style={{ color:'var(--green)', marginBottom:12 }}><span className="svc-dot"/>How it runs</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
+              {SVC_STEPS.map(([t],i)=>(
+                <div key={t} style={{ display:'flex', alignItems:'center', gap:10, fontSize:13, fontWeight:600 }}>
+                  <span style={{ fontSize:11, fontWeight:800, color:'var(--ink-3)', width:16 }}>{String(i+1).padStart(2,'0')}</span>{t}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── enquiry ── */}
+      <div id="book" className="svc-wrap" style={{ paddingBottom:'clamp(56px,8vw,96px)' }}>
+        <div style={{ maxWidth:560, margin:'0 auto' }}>
+          <div style={{ textAlign:'center', marginBottom:26 }}>
+            <div className="svc-eye" style={{ color:'var(--green)', marginBottom:13, justifyContent:'center' }}><span className="svc-dot"/>Enquire</div>
+            <h2 className="svc-h" style={{ fontSize:'clamp(25px,3.4vw,36px)', marginBottom:11 }}>Tell us about your space.</h2>
+            <p style={{ fontSize:14, color:'var(--ink-2)', lineHeight:1.75 }}>We save your enquiry and continue on WhatsApp.</p>
+          </div>
+
           {done ? (
-            <div style={{ background:'#fff', border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:'32px', textAlign:'center' }}>
-              <div style={{ fontSize:18, fontWeight:700, marginBottom:8, color:'var(--green)' }}>Request received ✓</div>
-              <p style={{ fontSize:13.5, color:'var(--ink-2)', lineHeight:1.6 }}>We've saved your request and opened WhatsApp so you can chat with us right away. If it didn't open, call us on {PHONE}.</p>
-              <button onClick={()=>{ setDone(false); setForm({name:'',phone:'',message:''}); setBooking(null) }} className="btn btn-green" style={{ padding:'11px 22px', borderRadius:10, fontSize:13, marginTop:18 }}>Make another request</button>
+            <div className="svc-form" style={{ textAlign:'center' }}>
+              <h3 className="svc-h" style={{ fontSize:24, marginBottom:11 }}>Thank you.</h3>
+              <p style={{ fontSize:14, color:'var(--ink-2)', lineHeight:1.75, marginBottom:24 }}>
+                {saveFailed
+                  ? <>We couldn&apos;t save your enquiry automatically — please send the WhatsApp message below and we&apos;ll pick it up from there.</>
+                  : <>Your enquiry is with us. We&apos;ve opened WhatsApp so you can add anything else right away.</>}
+              </p>
+              <a href={waUrl} target="_blank" rel="noreferrer" className="svc-pill svc-pill--dark svc-submit">Continue on WhatsApp<span className="svc-pill__ic">{Ico.wa}</span></a>
+              <div style={{ fontSize:13, color:'var(--ink-2)', marginTop:18 }}>
+                Or call <a href={`tel:${PHONE}`} style={{ color:'var(--ink)', fontWeight:700, textDecoration:'none' }}>{PHONE}</a>
+              </div>
+              <button onClick={()=>{ setDone(false); setSaveFailed(false); setForm({name:'',phone:'',message:''}); setBooking(null) }} className="svc-more2" style={{ marginTop:16 }}>New enquiry</button>
             </div>
           ) : (
-            <form onSubmit={submit} style={{ background:'#fff', border:'1px solid var(--line)', borderRadius:'var(--r-md)', padding:'28px' }}>
-              <label style={{ display:'block', fontSize:12, fontWeight:600, color:'var(--ink-2)', marginBottom:6 }}>Service</label>
-              <select value={booking || ''} onChange={e=>setBooking(e.target.value)} style={{ width:'100%', height:44, padding:'0 13px', border:'1px solid var(--line)', borderRadius:10, fontSize:14, marginBottom:16, background:'#fff', fontFamily:'inherit' }}>
-                <option value="">General enquiry</option>
-                {services.map(s=><option key={s.id} value={s.title}>{s.title}</option>)}
-              </select>
-              <input required placeholder="Your name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} style={{ width:'100%', height:44, padding:'0 13px', border:'1px solid var(--line)', borderRadius:10, fontSize:14, marginBottom:14, fontFamily:'inherit' }}/>
-              <input required placeholder="Phone number" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} style={{ width:'100%', height:44, padding:'0 13px', border:'1px solid var(--line)', borderRadius:10, fontSize:14, marginBottom:14, fontFamily:'inherit' }}/>
-              <textarea placeholder="Tell us about your space or what you need (optional)" value={form.message} onChange={e=>setForm({...form,message:e.target.value})} rows={3} style={{ width:'100%', padding:'12px 13px', border:'1px solid var(--line)', borderRadius:10, fontSize:14, marginBottom:18, fontFamily:'inherit', resize:'vertical' }}/>
-              <button type="submit" disabled={sending} className="btn btn-green" style={{ width:'100%', justifyContent:'center', padding:'14px 0', borderRadius:10, fontSize:14 }}>
-                {sending ? 'Sending…' : 'Send Request'}
+            <form onSubmit={submit} className="svc-form">
+              <div style={{ marginBottom:16 }}>
+                <label className="svc-lbl2" htmlFor="svc-select">Service</label>
+                <div style={{ position:'relative' }}>
+                  <select id="svc-select" className="svc-in2" value={booking || ''} onChange={e=>setBooking(e.target.value || null)}>
+                    <option value="">General enquiry</option>
+                    {services.map(s=><option key={s.id} value={s.title}>{s.title}</option>)}
+                  </select>
+                  <span style={{ position:'absolute', right:16, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', color:'var(--ink-3)', display:'flex' }}>
+                    <svg width="11" height="7" viewBox="0 0 11 7" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m1 1 4.5 4.5L10 1"/></svg>
+                  </span>
+                </div>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:16, marginBottom:16 }}>
+                <div>
+                  <label className="svc-lbl2" htmlFor="svc-name">Name</label>
+                  <input id="svc-name" required placeholder="Ama Mensah" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className="svc-in2"/>
+                </div>
+                <div>
+                  <label className="svc-lbl2" htmlFor="svc-phone">Phone</label>
+                  <input id="svc-phone" required type="tel" placeholder="054 792 7722" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} className="svc-in2"/>
+                </div>
+              </div>
+              <div style={{ marginBottom:22 }}>
+                <label className="svc-lbl2" htmlFor="svc-msg">Your space <span style={{ fontWeight:500, color:'var(--ink-3)' }}>(optional)</span></label>
+                <textarea id="svc-msg" placeholder="Room size, the look you want, timeline, budget…" value={form.message} onChange={e=>setForm({...form,message:e.target.value})} rows={3} className="svc-in2"/>
+              </div>
+              <button type="submit" disabled={sending} className="svc-pill svc-pill--dark svc-submit" style={{ opacity:sending?.55:1 }}>
+                {sending ? 'Sending' : 'Send enquiry'}<span className="svc-pill__ic">{Arr}</span>
               </button>
+              <p style={{ fontSize:11.5, color:'var(--ink-3)', textAlign:'center', marginTop:14, lineHeight:1.6 }}>We&apos;ll only use your number to reply about this enquiry.</p>
             </form>
           )}
         </div>
@@ -605,7 +742,7 @@ function Store() {
 
       {/* ══════ SERVICES ══════ */}
       {pg==='services' && (
-        <ServicesPage services={services} go={go} S={S} />
+        <ServicesPage services={services} products={products} go={go} S={S} />
       )}
 
       {/* ══════ DETAIL ══════ */}
