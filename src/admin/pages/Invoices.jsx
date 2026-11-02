@@ -40,7 +40,13 @@ export default function Invoices() {
                 <td style={{ fontWeight: 600 }}>{o.customer_name || 'Customer'}</td>
                 <td className="cell-dim">{fmtDateTime(o.created_at)}</td>
                 <td className="cell-num">{ghs(o.total)}</td>
-                <td><Badge tone={tone(o.status)}>{o.status}</Badge></td>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <Badge tone={tone(o.status)}>{o.status}</Badge>
+                    {/* Paid without a Paystack webhook confirmation — worth checking before fulfilling. */}
+                    {o.status === 'Paid' && o.payment_verified === false && <Badge tone="warn">Unverified</Badge>}
+                  </div>
+                </td>
                 <td><div style={{ display: 'flex', justifyContent: 'flex-end' }}><Button variant="line" size="sm" onClick={() => setDetail(o)}>View</Button></div></td>
               </tr>
             )} />

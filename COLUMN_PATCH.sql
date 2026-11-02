@@ -71,3 +71,12 @@ alter table whatsapp_orders add column if not exists status         text default
 alter table whatsapp_orders add column if not exists paystack_ref   text;
 alter table whatsapp_orders add column if not exists paid_at        timestamptz;
 alter table whatsapp_orders add column if not exists created_at     timestamptz default now();
+
+-- REFUNDS — `date` is declared inside "create table if not exists", so a table
+-- that pre-dated the rebuild never received it. Without it the Refunds page
+-- cannot list (order=date.desc -> 400) or issue a refund at all.
+alter table refunds add column if not exists date date default current_date;
+
+-- CUSTOMERS — the Add Customer form submits `notes`; without the column the
+-- insert fails with "Could not find the 'notes' column".
+alter table customers add column if not exists notes text;

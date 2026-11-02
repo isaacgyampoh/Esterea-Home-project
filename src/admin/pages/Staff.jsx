@@ -9,13 +9,20 @@ import Modal from '../ui/Modal'
 const BLANK = { name: '', role: 'Cashier', phone: '', pin: '', active: true }
 const ROLES = ['Manager', 'Staff', 'Cashier']
 
+// null = not yet probed, false = column absent (pre-migration), true = present
+let hasPinColumn = null
+
 export default function Staff({ session }) {
   const { data, loading, reload } = useAsync(async () => {
     // Never select `pin`. SECURITY_PATCH.sql revokes it from the anon key, and
     // `select('*')` would then fail outright with "permission denied for column".
     const cols = 'id,name,role,phone,active,created_at'
-    let { data, error } = await supabase.from('staff').select(cols + ',has_pin').order('name')
-    if (error) ({ data } = await supabase.from('staff').select(cols).order('name'))
+    if (hasPinColumn !== false) {
+      const { data, error } = await supabase.from('staff').select(cols + ',has_pin').order('name')
+      if (!error) { hasPinColumn = true; return data || [] }
+      hasPinColumn = false          // remember, so this probes once rather than every load
+    }
+    const { data } = await supabase.from('staff').select(cols).order('name')
     return data || []
   })
   const [modal, setModal] = useState(false)
