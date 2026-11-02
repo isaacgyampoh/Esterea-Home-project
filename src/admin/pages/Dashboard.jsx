@@ -93,7 +93,7 @@ export default function Dashboard({ onNav }) {
             {d.days.map((day, i) => (
               <div key={i} className="chart__col">
                 <div className="chart__barwrap">
-                  <div className="chart__bar" style={{ height: `${Math.max(day.val / maxBar * 100, 1)}%` }}>
+                  <div className={`chart__bar${day.today ? ' chart__bar--today' : ''}`} style={{ height: `${Math.max(day.val / maxBar * 100, 1)}%` }}>
                     {day.val > 0 && <span className="chart__val">{day.val.toFixed(0)}</span>}
                   </div>
                 </div>
