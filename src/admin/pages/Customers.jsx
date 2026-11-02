@@ -26,7 +26,12 @@ export default function Customers() {
     if (res.error) return toast(res.error.message, 'bad')
     toast('Saved', 'good'); setEditing(null); reload()
   }
-  async function del(c) { if (!confirm('Delete customer?')) return; await supabase.from('customers').delete().eq('id', c.id); reload() }
+  async function del(c) {
+    if (!confirm('Delete customer?')) return
+    const { error } = await supabase.from('customers').delete().eq('id', c.id)
+    if (error) return toast(error.message, 'bad')
+    toast('Customer deleted', 'good'); reload()
+  }
 
   return (
     <div>

@@ -32,7 +32,12 @@ export default function Promos() {
     if (res.error) return toast(res.error.message, 'bad')
     toast('Promo saved', 'good'); setEditing(null); reload()
   }
-  async function del(p) { if (!confirm('Delete promo?')) return; await supabase.from('promos').delete().eq('id', p.id); reload() }
+  async function del(p) {
+    if (!confirm('Delete promo?')) return
+    const { error } = await supabase.from('promos').delete().eq('id', p.id)
+    if (error) return toast(error.message, 'bad')
+    toast('Promo deleted', 'good'); reload()
+  }
 
   const row = p => (
     <tr key={p.id}>

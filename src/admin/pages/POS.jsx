@@ -62,6 +62,7 @@ export default function POS({ session }) {
       voided: false,
     }
     const { error } = await supabase.from('sales').insert(sale)
+    let stockErr = null
     if (!error) {
       // group cart lines by product, decrement variant stock or plain stock
       const byProduct = {}
@@ -77,16 +78,20 @@ export default function POS({ session }) {
             return { ...v, quantity: Math.max(0, (v.quantity || 0) - sold) }
           })
           const total = updated.reduce((a, v) => a + (v.quantity || 0), 0)
-          await supabase.from('products').update({ variants: updated, quantity: total }).eq('id', pid)
+          const { error: e1 } = await supabase.from('products').update({ variants: updated, quantity: total }).eq('id', pid)
+          stockErr = stockErr || e1
         } else {
           const sold = lines.reduce((a, l) => a + l.qty, 0)
-          await supabase.from('products').update({ quantity: Math.max(0, (prod.quantity || 0) - sold) }).eq('id', pid)
+          const { error: e2 } = await supabase.from('products').update({ quantity: Math.max(0, (prod.quantity || 0) - sold) }).eq('id', pid)
+          stockErr = stockErr || e2
         }
       }
     }
     setSaving(false)
     if (error) return toast(error.message, 'bad')
-    toast(`Sale complete · ${ghs(total)}`, 'good')
+    // The sale is saved either way — but silent stock drift causes overselling.
+    if (stockErr) toast(`Sale saved, but stock did not update: ${stockErr.message}`, 'bad')
+    else toast(`Sale complete · ${ghs(total)}`, 'good')
     setLastSale(sale)
     setCart([]); setDiscount(0); setCustomer(''); setPhone(''); reload()
   }

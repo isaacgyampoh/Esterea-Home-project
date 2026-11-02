@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAsync, toast } from '../lib/hooks'
-import { setAdminPassword } from '../lib/auth'
+import { setAdminPassword, isPinTaken } from '../lib/auth'
 import { Button, Input, Select, Toggle, Spinner, Empty, Badge } from '../ui'
 import { PageHeader, Panel, Table } from '../ui/Layout'
 import Modal from '../ui/Modal'
@@ -11,7 +11,11 @@ const ROLES = ['Manager', 'Staff', 'Cashier']
 
 export default function Staff({ session }) {
   const { data, loading, reload } = useAsync(async () => {
-    const { data } = await supabase.from('staff').select('*').order('name')
+    // Never select `pin`. SECURITY_PATCH.sql revokes it from the anon key, and
+    // `select('*')` would then fail outright with "permission denied for column".
+    const cols = 'id,name,role,phone,active,created_at'
+    let { data, error } = await supabase.from('staff').select(cols + ',has_pin').order('name')
+    if (error) ({ data } = await supabase.from('staff').select(cols).order('name'))
     return data || []
   })
   const [modal, setModal] = useState(false)
@@ -22,8 +26,16 @@ export default function Staff({ session }) {
   async function save() {
     if (form.pin && !/^\d{4,6}$/.test(form.pin)) return toast('PIN must be 4-6 digits', 'bad')
     if (form.pin) {
-      const clash = (data || []).find(s => s.pin === form.pin && s.id !== form.id)
-      if (clash) return toast(`PIN already used by ${clash.name}`, 'bad')
+      // PINs are no longer readable, so uniqueness is checked in the database.
+      const { taken, error: pinErr } = await isPinTaken(form.pin, form.id || null)
+      if (pinErr) return toast(pinErr.message, 'bad')
+      let clash = taken
+      if (clash === null) {   // pre-migration: pin is still readable
+        const q = supabase.from('staff').select('id').eq('pin', form.pin)
+        const { data: hit } = await (form.id ? q.neq('id', form.id) : q).maybeSingle()
+        clash = !!hit
+      }
+      if (clash) return toast('That PIN is already in use', 'bad')
     }
     setSaving(true)
     const { id, ...d } = form
@@ -32,8 +44,17 @@ export default function Staff({ session }) {
     if (res.error) return toast(res.error.message, 'bad')
     toast('Saved', 'good'); setModal(false); reload()
   }
-  async function del(s) { if (!confirm(`Remove ${s.name}?`)) return; await supabase.from('staff').delete().eq('id', s.id); reload() }
-  async function toggleActive(s) { await supabase.from('staff').update({ active: !s.active }).eq('id', s.id); reload() }
+  async function del(s) {
+    if (!confirm(`Remove ${s.name}?`)) return
+    const { error } = await supabase.from('staff').delete().eq('id', s.id)
+    if (error) return toast(error.message, 'bad')
+    toast('Staff removed', 'good'); reload()
+  }
+  async function toggleActive(s) {
+    const { error } = await supabase.from('staff').update({ active: !s.active }).eq('id', s.id)
+    if (error) return toast(error.message, 'bad')
+    reload()
+  }
 
   return (
     <div>
@@ -58,7 +79,7 @@ export default function Staff({ session }) {
               <tr key={s.id}>
                 <td style={{ fontWeight: 600 }}>{s.name}</td>
                 <td className="cell-dim">{s.role}</td>
-                <td><span className="cell-mono" style={{ fontSize: 13, letterSpacing: '.15em' }}>{s.pin || '—'}</span></td>
+                <td><span className="cell-mono" style={{ fontSize: 13, letterSpacing: '.15em' }}>{s.has_pin === false ? '—' : '••••'}</span></td>
                 <td className="cell-dim">{s.phone || '—'}</td>
                 <td><button style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0 }} onClick={() => toggleActive(s)}><Badge tone={s.active ? 'good' : 'dim'}>{s.active ? 'Active' : 'Inactive'}</Badge></button></td>
                 <td><div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}><Button variant="line" size="sm" icon="edit" onClick={() => { setForm(s); setModal(true) }}>Edit</Button><Button variant="bad" size="sm" icon="trash" onClick={() => del(s)}>Delete</Button></div></td>
@@ -72,7 +93,7 @@ export default function Staff({ session }) {
           footer={<><Button variant="line" onClick={() => setModal(false)}>Cancel</Button><Button onClick={save} disabled={saving || !form.name.trim()}>{saving ? 'Saving…' : 'Save'}</Button></>}>
           <Input label="Name" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Full name" />
           <Select label="Role" options={ROLES} value={form.role} onChange={v => setForm({ ...form, role: v })} />
-          <Input label="Login PIN" hint="(4-6 digits)" inputMode="numeric" value={form.pin} onChange={e => setForm({ ...form, pin: e.target.value.replace(/\D/g, '').slice(0, 6) })} placeholder="e.g. 1234" />
+          <Input label="Login PIN" hint="(4-6 digits)" inputMode="numeric" value={form.pin || ''} onChange={e => setForm({ ...form, pin: e.target.value.replace(/\D/g, '').slice(0, 6) })} placeholder="e.g. 1234" />
           <Input label="Phone" hint="(optional)" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="0XX XXX XXXX" />
           <Toggle on={form.active} onToggle={() => setForm({ ...form, active: !form.active })} label="Active" sub="Inactive staff can't sign in" />
         </Modal>

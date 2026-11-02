@@ -26,7 +26,12 @@ export default function Services() {
     if (res.error) return toast(res.error.message, 'bad')
     toast('Saved', 'good'); setEditing(null); reload()
   }
-  async function del(s) { if (!confirm(`Delete "${s.title}"?`)) return; await supabase.from('services').delete().eq('id', s.id); reload() }
+  async function del(s) {
+    if (!confirm(`Delete "${s.title}"?`)) return
+    const { error } = await supabase.from('services').delete().eq('id', s.id)
+    if (error) return toast(error.message, 'bad')
+    toast('Service deleted', 'good'); reload()
+  }
 
   return (
     <div>

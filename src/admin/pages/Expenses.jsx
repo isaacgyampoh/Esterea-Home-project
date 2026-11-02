@@ -32,7 +32,9 @@ export default function Expenses() {
   }
   async function del(e) {
     if (!confirm('Delete this expense?')) return
-    await supabase.from('expenses').delete().eq('id', e.id); reload()
+    const { error } = await supabase.from('expenses').delete().eq('id', e.id)
+    if (error) return toast(error.message, 'bad')
+    toast('Expense deleted', 'good'); reload()
   }
 
   return (
